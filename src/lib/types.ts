@@ -1,0 +1,110 @@
+export type SelectionType = "over" | "under";
+export type EdgeTier = "S" | "A" | "B" | "C" | "D" | "F";
+export type ResultStatus = "won" | "lost" | "push" | null;
+
+export interface ScanRow {
+  id: number;
+  league: string;
+  snapshot_game_date: string;
+  snapshot_taken_at: string;
+  player_name: string;
+  stat_category: string;
+  selection_type: SelectionType;
+  sportsbook: string;
+  line: number;
+  odds_american: number;
+  model_probability: number;
+  edge: number;
+  needs_review: boolean;
+  projection_mean: number | null;
+  projection_std: number | null;
+  distribution_type: string | null;
+  n_games_used: number | null;
+  unshrunk_mean: number | null;
+  line_spread: number | null;
+  workload_flag: string | null;
+  pinnacle_divergence: number | null;
+  model_pinnacle_divergence: number | null;
+  fair_probability: number | null;
+  fair_value_odds: number | null;
+  fair_value_source: string | null;
+  matchup_json: string | null;
+  event_start_time: string | null;
+  away_team: string | null;
+  home_team: string | null;
+  away_abbreviation: string | null;
+  home_abbreviation: string | null;
+  player_team: string | null;
+}
+
+export interface PlacedBet {
+  id: number;
+  player_name: string;
+  stat_category: string;
+  selection_type: SelectionType;
+  sportsbook: string;
+  line: number;
+  game_date: string;
+  event_id: string | null;
+  odds_american: number | null;
+  wager: number | null;
+  placed_at: string;
+  notes: string | null;
+  // joined from bet_journal
+  result_status: ResultStatus;
+  result_actual_value: number | null;
+  clv_probability: number | null;
+  closing_odds_american: number | null;
+}
+
+export interface BetTrackerKPIs {
+  total: number;
+  won: number;
+  lost: number;
+  push: number;
+  open: number;
+  total_wagered: number;
+  net_profit: number;
+  roi: number;
+  by_tier: Record<EdgeTier, { total: number; won: number; lost: number; push: number }>;
+}
+
+export function edgeTier(edge: number): EdgeTier {
+  if (edge >= 0.15) return "S";
+  if (edge >= 0.12) return "A";
+  if (edge >= 0.09) return "B";
+  if (edge >= 0.07) return "C";
+  if (edge >= 0.05) return "D";
+  return "F";
+}
+
+export function formatOdds(american: number): string {
+  return american > 0 ? `+${american}` : `${american}`;
+}
+
+export function formatEdge(edge: number): string {
+  return `${(edge * 100).toFixed(1)}%`;
+}
+
+export function statLabel(stat: string): string {
+  const map: Record<string, string> = {
+    points: "PTS",
+    rebounds: "REB",
+    assists: "AST",
+    strikeouts_pitcher: "K",
+    earned_runs: "ER",
+    outs_pitcher: "OUTS",
+  };
+  return map[stat] ?? stat;
+}
+
+export function bookLabel(book: string): string {
+  const map: Record<string, string> = {
+    draftkings: "DK",
+    fanduel: "FD",
+    caesars: "CZR",
+    novig: "NV",
+    pinnacle: "PIN",
+  };
+  return map[book] ?? book;
+}
