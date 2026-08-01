@@ -40,12 +40,37 @@ async function ghFetch(path: string, init?: RequestInit): Promise<Response> {
   });
 }
 
+/**
+ * Resolve GITHUB_REF (default main) to the current tip commit SHA.
+ * Every Actions click must run whatever is newest on that branch — not a
+ * stale symbolic checkout or an old GITHUB_REF pin.
+ */
+async function resolveTipSha(ref: string): Promise<string> {
+  const { owner, name } = githubConfig();
+  const res = await ghFetch(`/repos/${owner}/${name}/commits/${encodeURIComponent(ref)}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`resolve tip sha failed for ${ref} (${res.status}): ${body}`);
+  }
+  const data: unknown = await res.json();
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("sha" in data) ||
+    typeof (data as { sha: unknown }).sha !== "string"
+  ) {
+    throw new Error(`resolve tip sha: unexpected response for ${ref}`);
+  }
+  return (data as { sha: string }).sha;
+}
+
 export async function dispatchWorkflow(args: {
   action: RunAction;
   date?: string;
-}): Promise<{ workflow: string; runId: number | null }> {
-  const { owner, name, ref } = githubConfig();
+}): Promise<{ workflow: string; runId: number | null; ref: string }> {
+  const { owner, name, ref: branchOrRef } = githubConfig();
   const workflow = WORKFLOW_BY_ACTION[args.action];
+  const tipSha = await resolveTipSha(branchOrRef);
 
   const inputs: Record<string, string> = {};
   if (args.action !== "resolve" && args.date) {
@@ -58,7 +83,9 @@ export async function dispatchWorkflow(args: {
     {
       method: "POST",
       body: JSON.stringify({
-        ref,
+        // Pin the run to the tip SHA resolved at click time so the job
+        // cannot race a mid-flight branch move onto older code.
+        ref: tipSha,
         inputs,
       }),
     },
@@ -75,7 +102,7 @@ export async function dispatchWorkflow(args: {
     sinceMs: dispatchedAt - 5_000,
   });
 
-  return { workflow, runId };
+  return { workflow, runId, ref: tipSha };
 }
 
 async function findRecentRun(args: {

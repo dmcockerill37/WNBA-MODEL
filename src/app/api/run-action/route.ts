@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       date: actionRaw === "resolve" ? null : (date ?? "today"),
       workflow: result.workflow,
       run_id: result.runId,
+      ref: result.ref,
     });
   } catch (err) {
     console.error("run-action error:", err);

@@ -28,7 +28,14 @@ function assertConfigured() {
 export async function startRunAction(args: {
   action: string;
   date?: string;
-}): Promise<{ ok: true; action: RunAction; date: string | null; run_id: number | null; workflow: string }> {
+}): Promise<{
+  ok: true;
+  action: RunAction;
+  date: string | null;
+  run_id: number | null;
+  workflow: string;
+  ref: string;
+}> {
   assertConfigured();
   if (!isRunAction(args.action)) {
     throw new Error("action must be scan | resolve | pinnacle-check");
@@ -52,6 +59,7 @@ export async function startRunAction(args: {
     date: args.action === "resolve" ? null : (date ?? "today"),
     run_id: result.runId,
     workflow: result.workflow,
+    ref: result.ref,
   };
 }
 
