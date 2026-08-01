@@ -1,0 +1,59 @@
+name: WNBA full scan
+
+# Dashboard "Run scan" action. Matches /scan-wnba (scan-sheets) but skips
+# Google Sheets so Neon is the source of truth for the Next.js app.
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: '"today", "tomorrow", or YYYY-MM-DD (US Eastern)'
+        required: false
+        default: today
+        type: string
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Pinnacle fair-value matching launches headless Chromium
+      # (market/pinnacle_client.py). Guest soft-book dump needs Node.
+      - name: Install Playwright Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: odds/package-lock.json
+
+      - name: Install guest odds clients
+        working-directory: odds
+        run: npm ci
+
+      - name: Run WNBA scan-sheets (Neon only)
+        env:
+          DATE: ${{ inputs.date || 'today' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          SHARPAPI_KEY: ${{ secrets.SHARPAPI_KEY }}
+          SOFT_BOOKS: ${{ vars.SOFT_BOOKS }}
+          FANDUEL_STATE: ${{ vars.FANDUEL_STATE }}
+          BETRIVERS_STATE: ${{ vars.BETRIVERS_STATE }}
+          KAMBI_OPERATOR: ${{ vars.KAMBI_OPERATOR }}
+          DK_RELAY_URL: ${{ secrets.DK_RELAY_URL }}
+          DK_RELAY_API_KEY: ${{ secrets.DK_RELAY_API_KEY }}
+          DK_PROXY_URL: ${{ secrets.DK_PROXY_URL }}
+          PINNACLE_X_API_KEY: ${{ secrets.PINNACLE_X_API_KEY }}
+        run: |
+          mkdir -p data
+          uv run python -m propmodel scan-sheets wnba --date "$DATE" --skip-sheets

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import ActionsMenu from "./ActionsMenu";
 
 const links = [
   { href: "/today", label: "Today" },
@@ -66,6 +67,8 @@ export default function Nav() {
           </Link>
         );
       })}
+
+      <ActionsMenu />
     </nav>
   );
 }
