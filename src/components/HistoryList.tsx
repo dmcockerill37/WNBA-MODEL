@@ -9,6 +9,7 @@ import {
   formatEventMeta,
   statLabel,
   bookLabel,
+  primaryEdge,
 } from "@/lib/types";
 import TierBadge from "./TierBadge";
 import Pagination, { PAGE_SIZE_OPTIONS, PageSize, slicePage } from "./Pagination";
@@ -165,10 +166,10 @@ function HistoryDateSection({
                       )}
                     </td>
                     <td style={{ padding: "9px 14px", textAlign: "right" }}>
-                      <TierBadge edge={row.edge} />
+                      <TierBadge edge={primaryEdge(row)} />
                     </td>
                     <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
-                      {formatEdge(row.edge)}
+                      {formatEdge(primaryEdge(row))}
                     </td>
                     <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--text-secondary)", fontSize: "12px" }}>
                       {bookLabel(row.sportsbook)}

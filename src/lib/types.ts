@@ -14,7 +14,16 @@ export interface ScanRow {
   line: number;
   odds_american: number;
   model_probability: number;
+  /** Raw generative side-prob before isotonic/Platt (Phase 3); null if absent. */
+  raw_model_probability?: number | null;
+  /** Calibrated side-prob (Phase 3); often equals model_probability when present. */
+  calibrated_model_probability?: number | null;
+  /** Primary edge: model − fair/devigged market (Model 2.0 Phase 1). */
   edge: number;
+  /** Explicit fair edge; null on pre-Phase-1 snapshot rows. */
+  edge_vs_fair: number | null;
+  /** Soft-book implied (with vig) diagnostic; not the rank key. */
+  raw_book_edge: number | null;
   needs_review: boolean;
   projection_mean: number | null;
   projection_std: number | null;
@@ -58,12 +67,27 @@ export interface PlacedBet {
   result_actual_value: number | null;
   clv_probability: number | null;
   closing_odds_american: number | null;
+  /** Fair edge at flag time (Model 2.0); used for tier / CLV slices. */
+  edge_at_flag: number | null;
 }
 
 /** Clean scan pick with optional settlement from bet_journal. */
 export interface HistoryRow extends ScanRow {
   result_status: ResultStatus;
   result_actual_value: number | null;
+}
+
+export interface TierClvStats {
+  total: number;
+  won: number;
+  lost: number;
+  push: number;
+  open: number;
+  /** Decided non-push hit rate; null if no won/lost. */
+  hit_rate: number | null;
+  /** Mean CLV among rows with clv_probability; null if none. */
+  mean_clv: number | null;
+  n_with_clv: number;
 }
 
 export interface BetTrackerKPIs {
@@ -75,7 +99,39 @@ export interface BetTrackerKPIs {
   total_wagered: number;
   net_profit: number;
   roi: number;
-  by_tier: Record<EdgeTier, { total: number; won: number; lost: number; push: number }>;
+  by_tier: Record<EdgeTier, TierClvStats>;
+  by_edge_bucket: Record<string, TierClvStats>;
+}
+
+/** Inclusive edge buckets aligned with dashboard edgeTier bands. */
+export const EDGE_BUCKETS: { key: string; label: string; min: number; max: number | null }[] = [
+  { key: "15+", label: "≥15%", min: 0.15, max: null },
+  { key: "12-15", label: "12–15%", min: 0.12, max: 0.15 },
+  { key: "9-12", label: "9–12%", min: 0.09, max: 0.12 },
+  { key: "7-9", label: "7–9%", min: 0.07, max: 0.09 },
+  { key: "5-7", label: "5–7%", min: 0.05, max: 0.07 },
+  { key: "<5", label: "<5%", min: -Infinity, max: 0.05 },
+];
+
+export function edgeBucketKey(edge: number | null | undefined): string {
+  if (edge == null || Number.isNaN(edge)) return "<5";
+  for (const b of EDGE_BUCKETS) {
+    if (edge >= b.min && (b.max == null || edge < b.max)) return b.key;
+  }
+  return "<5";
+}
+
+export function emptyTierClvStats(): TierClvStats {
+  return {
+    total: 0,
+    won: 0,
+    lost: 0,
+    push: 0,
+    open: 0,
+    hit_rate: null,
+    mean_clv: null,
+    n_with_clv: 0,
+  };
 }
 
 export function edgeTier(edge: number): EdgeTier {
@@ -93,6 +149,16 @@ export function formatOdds(american: number): string {
 
 export function formatEdge(edge: number): string {
   return `${(edge * 100).toFixed(1)}%`;
+}
+
+/** Primary display edge: prefer explicit edge_vs_fair when present. */
+export function primaryEdge(row: Pick<ScanRow, "edge" | "edge_vs_fair">): number {
+  return row.edge_vs_fair ?? row.edge;
+}
+
+/** Label for primary edge: distinguish Phase-1 fair edge from legacy vigged edge. */
+export function primaryEdgeLabel(row: Pick<ScanRow, "edge_vs_fair">): string {
+  return row.edge_vs_fair != null ? "Edge vs fair" : "Edge (legacy)";
 }
 
 export function statLabel(stat: string): string {

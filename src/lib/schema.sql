@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS scan_snapshots (
     line REAL,
     odds_american INTEGER,
     model_probability REAL,
+    -- Model 2.0 Phase 3: model_probability is calibrated when present.
+    raw_model_probability REAL,
+    calibrated_model_probability REAL,
     edge REAL,
     needs_review INTEGER NOT NULL DEFAULT 0,
     projection_mean REAL,
@@ -49,6 +52,10 @@ CREATE TABLE IF NOT EXISTS scan_snapshots (
     fair_probability REAL,
     fair_value_odds INTEGER,
     fair_value_source TEXT,
+    -- Model 2.0 Phase 1: edge column stores edge_vs_fair (primary rank key);
+    -- raw_book_edge is soft-book implied (with vig) for diagnostics only.
+    edge_vs_fair REAL,
+    raw_book_edge REAL,
     matchup_json TEXT,
     event_start_time TEXT,
     away_team TEXT,

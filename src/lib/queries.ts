@@ -96,7 +96,8 @@ export async function getPlacedBets(): Promise<PlacedBet[]> {
         bj.result_status,
         bj.result_actual_value,
         bj.clv_probability,
-        bj.closing_odds_american
+        bj.closing_odds_american,
+        bj.edge_at_flag
       FROM placed_bets pb
       LEFT JOIN bet_journal bj
         ON bj.player_name = pb.player_name
@@ -106,7 +107,13 @@ export async function getPlacedBets(): Promise<PlacedBet[]> {
         AND DATE(bj.event_start_time) = pb.game_date
       ORDER BY pb.game_date DESC, pb.placed_at DESC
     `;
-    return rows as PlacedBet[];
+    return rows.map((r) => ({
+      ...r,
+      edge_at_flag: r.edge_at_flag != null ? Number(r.edge_at_flag) : null,
+      clv_probability: r.clv_probability != null ? Number(r.clv_probability) : null,
+      result_actual_value:
+        r.result_actual_value != null ? Number(r.result_actual_value) : null,
+    })) as PlacedBet[];
   } catch {
     return [];
   }

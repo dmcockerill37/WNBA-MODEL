@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
+import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel, edgeTier, EdgeTier, primaryEdge } from "@/lib/types";
 import TierBadge from "./TierBadge";
 import Drawer from "./Drawer";
 import Pagination, { PAGE_SIZE_OPTIONS, PageSize, slicePage } from "./Pagination";
@@ -244,7 +244,7 @@ function ScanSection({
                 const key = betKey(row, gameDate);
                 const isPlaced = placed.has(key);
                 const isLoading = loadingKeys.has(key);
-                const tier = edgeTier(row.edge);
+                const tier = edgeTier(primaryEdge(row));
                 const eventMeta = formatEventMeta(row);
                 const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
                 const modelAmerican = row.model_probability
@@ -252,6 +252,7 @@ function ScanSection({
                     ? Math.round(-100 * row.model_probability / (1 - row.model_probability))
                     : Math.round(100 * (1 - row.model_probability) / row.model_probability)
                   : null;
+                const displayEdge = primaryEdge(row);
 
                 return (
                   <tr
@@ -329,7 +330,7 @@ function ScanSection({
                       )}
                     </td>
                     <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                      <TierBadge edge={row.edge} />
+                      <TierBadge edge={displayEdge} />
                     </td>
                     <td
                       style={{
@@ -340,7 +341,7 @@ function ScanSection({
                         color: TIER_COLOR[tier],
                       }}
                     >
-                      {formatEdge(row.edge)}
+                      {formatEdge(displayEdge)}
                     </td>
                     <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-secondary)", fontSize: "12px" }}>
                       {bookLabel(row.sportsbook)}
