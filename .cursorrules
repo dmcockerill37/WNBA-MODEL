@@ -1,0 +1,73 @@
+# WNBA Model Dashboard
+
+Next.js 16 + Neon (Postgres) dashboard for a WNBA player prop model.
+Live at https://wnba-model-five.vercel.app
+
+## Stack
+
+- Next.js 16 App Router, TypeScript, Tailwind CSS
+- Neon (serverless Postgres) via `@neondatabase/serverless`
+- Deployed on Vercel (auto-deploys on push to main)
+- No component library - all UI is hand-rolled with inline styles using CSS variables
+
+## Project structure
+
+src/
+  app/
+    today/page.tsx        - Today's scan (server component, revalidate 300s)
+    tomorrow/page.tsx     - Tomorrow's scan
+    yesterday/page.tsx    - Yesterday's scan
+    tracker/page.tsx      - Bet Tracker with KPI cards
+    history/page.tsx      - All scan history grouped by date
+    api/
+      placed-bets/route.ts  - POST/DELETE/PATCH for bet tracking (checkbox -> DB)
+  components/
+    Nav.tsx               - Sticky top nav
+    ScanPage.tsx          - Server component: fetches data, renders ScanTable
+    ScanTable.tsx         - Client component: the bet table + checkbox interaction
+    Drawer.tsx            - Slide-in detail panel per bet
+    TierBadge.tsx         - S/A/B/C/D/F colored tier badge
+  lib/
+    db.ts                 - Neon connection (sql tagged template)
+    queries.ts            - All DB reads (wrapped in try/catch, return [] on error)
+    types.ts              - Shared TypeScript types + helpers (edgeTier, formatOdds, etc.)
+    dates.ts              - todayET(), tomorrowET(), yesterdayET() in US Eastern
+    schema.sql            - Postgres schema (run once via psql or Neon SQL editor)
+
+## Database tables (Neon)
+
+- `scan_snapshots` - model scan output, written by Python propmodel on every scan
+- `placed_bets` - bets the user checked off; written by /api/placed-bets in real time
+- `bet_journal` - CLV tracking, written by Python propmodel after games close
+
+## Design system
+
+Dark sports-analytics theme. CSS variables defined in globals.css:
+- --bg, --bg-card, --bg-card-hover, --border, --text-primary, --text-secondary, --text-muted, --accent
+- Tier colors: --tier-s (#a78bfa), --tier-a (#34d399), --tier-b (#60a5fa), --tier-c (#fbbf24), --tier-d (#fb923c), --tier-f (#f87171)
+- Side colors: --over (#60a5fa), --under (#fb923c)
+- Result colors: --won (#34d399), --lost (#f87171)
+
+Tier thresholds (in types.ts edgeTier()):
+  S >= 15%, A >= 12%, B >= 9%, C >= 7%, D >= 5%, F < 5%
+
+## Key conventions
+
+- All DB queries live in lib/queries.ts and return empty arrays on error (build never fails)
+- Pages are server components; interactivity (checkboxes, drawer) lives in client components
+- Bet tracking: checkbox click -> fetch /api/placed-bets -> instant DB write, no sync scripts
+- Dates are always US Eastern. Use dates.ts helpers, never raw new Date() for game dates.
+- stat labels: points=PTS, rebounds=REB, assists=AST, strikeouts_pitcher=K, earned_runs=ER
+- book labels: draftkings=DK, fanduel=FD, caesars=CZR, novig=NV
+
+## Data flow
+
+Python propmodel (separate repo: bet-model) runs scans -> writes to Neon scan_snapshots
+-> Next.js reads scan_snapshots -> displays in dashboard
+User checks checkbox -> /api/placed-bets writes to placed_bets -> Bet Tracker reads it
+Python resolves games -> writes to bet_journal -> Bet Tracker joins and shows CLV/result
+
+## Environment
+
+DATABASE_URL is set in .env.local (from Vercel via `vercel env pull .env.local`).
+Never commit .env.local. Never hardcode credentials.
