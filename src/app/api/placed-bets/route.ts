@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
+
+/** Invalidate pages that read placed_bets so Tracker reflects track/untrack immediately. */
+function revalidatePlacedBetViews() {
+  revalidatePath("/tracker");
+  revalidatePath("/today");
+  revalidatePath("/tomorrow");
+  revalidatePath("/yesterday");
+}
 
 // POST /api/placed-bets - place a bet (checkbox checked)
 export async function POST(req: NextRequest) {
@@ -33,6 +42,7 @@ export async function POST(req: NextRequest) {
       DO UPDATE SET wager = EXCLUDED.wager
       RETURNING id
     `;
+    revalidatePlacedBetViews();
     return NextResponse.json({ id: rows[0].id });
   } catch (err) {
     console.error("placed-bets POST error:", err);
@@ -64,6 +74,7 @@ export async function DELETE(req: NextRequest) {
         AND line = ${parseFloat(line)}
         AND game_date = ${game_date}
     `;
+    revalidatePlacedBetViews();
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("placed-bets DELETE error:", err);
@@ -86,6 +97,7 @@ export async function PATCH(req: NextRequest) {
       SET wager = ${wager ?? null}, notes = ${notes ?? null}
       WHERE id = ${id}
     `;
+    revalidatePlacedBetViews();
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("placed-bets PATCH error:", err);

@@ -10,7 +10,9 @@ import {
 } from "@/lib/types";
 import TrackerTable from "@/components/TrackerTable";
 
-export const revalidate = 60;
+// Placed bets change whenever the user tracks from Today/Tomorrow/Yesterday —
+// always render from the live DB, never a stale ISR snapshot.
+export const dynamic = "force-dynamic";
 
 const TIER_ORDER: EdgeTier[] = ["S", "A", "B", "C", "D", "F"];
 
