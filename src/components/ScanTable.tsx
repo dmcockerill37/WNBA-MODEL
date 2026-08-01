@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
 import TierBadge from "./TierBadge";
 import Drawer from "./Drawer";
+import Pagination, { PAGE_SIZE_OPTIONS, PageSize, slicePage } from "./Pagination";
 
 const TIER_COLOR: Record<EdgeTier, string> = {
   S: "#a78bfa",
@@ -34,6 +35,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
   const [placed, setPlaced] = useState<Set<string>>(new Set(initialPlaced));
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
   const [drawerRow, setDrawerRow] = useState<ScanRow | null>(null);
+  const [pageSize, setPageSize] = useState<PageSize>(10);
 
   const clean = rows.filter((r) => !r.needs_review);
   const review = rows.filter((r) => r.needs_review);
@@ -92,31 +94,128 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
     }
   }
 
-  function renderSection(sectionRows: ScanRow[], label: string, accent: string) {
-    if (sectionRows.length === 0) return null;
-    return (
-      <div style={{ marginBottom: "32px" }}>
+  return (
+    <div>
+      {rows.length > 0 && (
         <div
           style={{
-            fontSize: "11px",
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            color: accent,
-            textTransform: "uppercase",
-            marginBottom: "8px",
-            padding: "0 4px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "16px",
+            fontSize: "12px",
+            color: "var(--text-muted)",
           }}
         >
-          {label} ({sectionRows.length})
+          <span>Rows</span>
+          <select
+            value={String(pageSize)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPageSize(v === "all" ? "all" : (Number(v) as PageSize));
+            }}
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+              borderRadius: "6px",
+              padding: "4px 8px",
+              fontSize: "12px",
+              cursor: "pointer",
+            }}
+          >
+            {PAGE_SIZE_OPTIONS.map((opt) => (
+              <option key={String(opt.value)} value={String(opt.value)}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
-        <div
-          style={{
-            background: "var(--bg-card)",
-            borderRadius: "10px",
-            border: "1px solid var(--border)",
-            overflow: "hidden",
-          }}
-        >
+      )}
+      {clean.length > 0 && (
+        <ScanSection
+          key={`clean-${pageSize}`}
+          label="Clean"
+          accent="#34d399"
+          sectionRows={clean}
+          pageSize={pageSize}
+          gameDate={gameDate}
+          placed={placed}
+          loadingKeys={loadingKeys}
+          onTogglePlaced={togglePlaced}
+          onRowClick={setDrawerRow}
+        />
+      )}
+      {review.length > 0 && (
+        <ScanSection
+          key={`review-${pageSize}`}
+          label="Needs Review"
+          accent="#fbbf24"
+          sectionRows={review}
+          pageSize={pageSize}
+          gameDate={gameDate}
+          placed={placed}
+          loadingKeys={loadingKeys}
+          onTogglePlaced={togglePlaced}
+          onRowClick={setDrawerRow}
+        />
+      )}
+
+      {drawerRow && (
+        <Drawer row={drawerRow} onClose={() => setDrawerRow(null)} />
+      )}
+    </div>
+  );
+}
+
+function ScanSection({
+  label,
+  accent,
+  sectionRows,
+  pageSize,
+  gameDate,
+  placed,
+  loadingKeys,
+  onTogglePlaced,
+  onRowClick,
+}: {
+  label: string;
+  accent: string;
+  sectionRows: ScanRow[];
+  pageSize: PageSize;
+  gameDate: string;
+  placed: Set<string>;
+  loadingKeys: Set<string>;
+  onTogglePlaced: (row: ScanRow, e: React.MouseEvent) => void;
+  onRowClick: (row: ScanRow) => void;
+}) {
+  const [page, setPage] = useState(1);
+  const visible = slicePage(sectionRows, page, pageSize);
+
+  return (
+    <div style={{ marginBottom: "32px" }}>
+      <div
+        style={{
+          fontSize: "11px",
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          color: accent,
+          textTransform: "uppercase",
+          marginBottom: "8px",
+          padding: "0 4px",
+        }}
+      >
+        {label} ({sectionRows.length})
+      </div>
+      <div
+        style={{
+          background: "var(--bg-card)",
+          borderRadius: "10px",
+          border: "1px solid var(--border)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
@@ -141,7 +240,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
               </tr>
             </thead>
             <tbody>
-              {sectionRows.map((row, idx) => {
+              {visible.map((row, idx) => {
                 const key = betKey(row, gameDate);
                 const isPlaced = placed.has(key);
                 const isLoading = loadingKeys.has(key);
@@ -157,7 +256,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                 return (
                   <tr
                     key={`${row.player_name}-${row.stat_category}-${row.selection_type}-${row.sportsbook}-${row.line}`}
-                    onClick={() => setDrawerRow(row)}
+                    onClick={() => onRowClick(row)}
                     style={{
                       borderTop: idx > 0 ? "1px solid var(--border-subtle, #111827)" : undefined,
                       cursor: "pointer",
@@ -170,10 +269,9 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                       (e.currentTarget as HTMLTableRowElement).style.background = "";
                     }}
                   >
-                    {/* checkbox */}
                     <td style={{ padding: "10px 8px 10px 14px", textAlign: "center", width: "40px" }}>
                       <button
-                        onClick={(e) => togglePlaced(row, e)}
+                        onClick={(e) => onTogglePlaced(row, e)}
                         style={{
                           width: "18px",
                           height: "18px",
@@ -196,15 +294,12 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                         )}
                       </button>
                     </td>
-                    {/* player */}
                     <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--text-primary)" }}>
                       {row.player_name}
                     </td>
-                    {/* stat */}
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>
                       {statLabel(row.stat_category)}
                     </td>
-                    {/* side */}
                     <td style={{ padding: "10px 14px" }}>
                       <span
                         style={{
@@ -220,11 +315,9 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                         {row.selection_type}
                       </span>
                     </td>
-                    {/* line */}
                     <td style={{ padding: "10px 14px", fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>
                       {row.line}
                     </td>
-                    {/* event */}
                     <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
                       <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
                         {formatEvent(row)}
@@ -235,11 +328,9 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                         </div>
                       )}
                     </td>
-                    {/* tier */}
                     <td style={{ padding: "10px 14px", textAlign: "right" }}>
                       <TierBadge edge={row.edge} />
                     </td>
-                    {/* edge */}
                     <td
                       style={{
                         padding: "10px 14px",
@@ -251,25 +342,20 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                     >
                       {formatEdge(row.edge)}
                     </td>
-                    {/* book */}
                     <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-secondary)", fontSize: "12px" }}>
                       {bookLabel(row.sportsbook)}
                     </td>
-                    {/* book odds */}
                     <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-primary)" }}>
                       {row.odds_american != null ? formatOdds(row.odds_american) : "--"}
                     </td>
-                    {/* pinnacle / fair value */}
                     <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
                       {row.fair_value_odds != null && row.fair_value_source === "pinnacle"
                         ? formatOdds(row.fair_value_odds)
                         : "--"}
                     </td>
-                    {/* model odds */}
                     <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--accent)" }}>
                       {modelAmerican != null ? formatOdds(modelAmerican) : "--"}
                     </td>
-                    {/* result */}
                     <td style={{ padding: "10px 14px", textAlign: "right" }}>
                       {rs ? (
                         <span
@@ -288,11 +374,9 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                         <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
                       )}
                     </td>
-                    {/* actual */}
                     <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
                       {row.result_actual_value != null ? row.result_actual_value : "--"}
                     </td>
-                    {/* flags */}
                     <td style={{ padding: "10px 14px", textAlign: "right" }}>
                       {row.needs_review && (
                         <span style={{ color: "#fbbf24", fontSize: "11px" }}>review</span>
@@ -305,17 +389,14 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
           </table>
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div>
-      {renderSection(clean, "Clean", "#34d399")}
-      {renderSection(review, "Needs Review", "#fbbf24")}
-
-      {drawerRow && (
-        <Drawer row={drawerRow} onClose={() => setDrawerRow(null)} />
-      )}
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={sectionRows.length}
+        onPageChange={setPage}
+        onPageSizeChange={() => {}}
+        showPageSize={false}
+      />
     </div>
   );
 }
