@@ -1,14 +1,14 @@
-import { getHistoryRows, getAvailableDates } from "@/lib/queries";
-import { formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel } from "@/lib/types";
+import { getHistoryRows } from "@/lib/queries";
+import { formatOdds, formatEdge, formatEvent, formatEventMeta, rowGameDate, statLabel, bookLabel } from "@/lib/types";
 import TierBadge from "@/components/TierBadge";
 
 export const revalidate = 300;
 
 export default async function HistoryPage() {
-  const [rows, dates] = await Promise.all([getHistoryRows(300), getAvailableDates()]);
+  const rows = await getHistoryRows(300);
 
   const byDate = rows.reduce<Record<string, typeof rows>>((acc, row) => {
-    const d = row.snapshot_game_date;
+    const d = rowGameDate(row) ?? "unknown";
     if (!acc[d]) acc[d] = [];
     acc[d].push(row);
     return acc;

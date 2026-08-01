@@ -137,11 +137,26 @@ export function formatEventDate(isoDate: string | null): string | null {
   });
 }
 
+/** Eastern YYYY-MM-DD for a row; falls back to event_start_time when snapshot date is "all". */
+export function rowGameDate(
+  row: Pick<ScanRow, "snapshot_game_date" | "event_start_time">
+): string | null {
+  if (row.snapshot_game_date && row.snapshot_game_date !== "all") {
+    return row.snapshot_game_date;
+  }
+  if (!row.event_start_time) return null;
+  const d = new Date(row.event_start_time);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+}
+
 /** Secondary event line: "Jul 31 · 7:00 PM" */
 export function formatEventMeta(
   row: Pick<ScanRow, "snapshot_game_date" | "event_start_time">
 ): string | null {
-  const date = formatEventDate(row.snapshot_game_date);
+  const date =
+    formatEventDate(row.snapshot_game_date) ??
+    formatEventDate(rowGameDate(row));
   const time = formatEventTime(row.event_start_time);
   if (date && time) return `${date} · ${time}`;
   return date ?? time;
