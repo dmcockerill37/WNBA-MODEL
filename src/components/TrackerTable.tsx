@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PlacedBet, formatOdds, statLabel, bookLabel } from "@/lib/types";
 import Pagination, { PageSize, slicePage } from "./Pagination";
+import TierBadge from "./TierBadge";
 
 const RESULT_STYLE: Record<string, { color: string; bg: string; label: string }> = {
   won: { color: "#34d399", bg: "rgba(52,211,153,0.12)", label: "W" },
@@ -70,7 +71,11 @@ export default function TrackerTable({ bets }: { bets: PlacedBet[] }) {
                       </span>
                     </td>
                     <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{bet.line}</td>
-                    <td style={{ padding: "10px 14px", textAlign: "right" }}>--</td>
+                    <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                      {bet.edge_at_flag != null ? <TierBadge edge={bet.edge_at_flag} /> : (
+                        <span style={{ color: "var(--text-muted)" }}>--</span>
+                      )}
+                    </td>
                     <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-secondary)", fontSize: "12px" }}>
                       {bookLabel(bet.sportsbook)}
                     </td>

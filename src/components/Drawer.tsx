@@ -137,6 +137,22 @@ export default function Drawer({ row, onClose }: Props) {
             { label: "Pinnacle", value: row.fair_value_odds != null && row.fair_value_source === "pinnacle" ? formatOdds(row.fair_value_odds) : "--" },
             { label: "Model odds", value: row.model_probability != null ? formatOdds(modelAmerican(row.model_probability)) : "--", color: "#3b82f6" },
             { label: "Fair prob", value: row.fair_probability != null ? `${(row.fair_probability * 100).toFixed(1)}%` : "--" },
+            ...(row.calibrated_model_probability != null || row.raw_model_probability != null
+              ? [
+                  {
+                    label: "Calibrated p",
+                    value: row.calibrated_model_probability != null
+                      ? `${(row.calibrated_model_probability * 100).toFixed(1)}%`
+                      : `${(row.model_probability * 100).toFixed(1)}%`,
+                  },
+                  {
+                    label: "Raw model p",
+                    value: row.raw_model_probability != null
+                      ? `${(row.raw_model_probability * 100).toFixed(1)}%`
+                      : "--",
+                  },
+                ]
+              : []),
             { label: "Result", value: resultLabel, color: resultColor },
             { label: "Actual", value: row.result_actual_value != null ? row.result_actual_value : "--" },
           ].map((stat, i) => (
@@ -179,6 +195,14 @@ export default function Drawer({ row, onClose }: Props) {
             )}
             {row.model_probability != null && (
               <Row label="Model probability" value={`${(row.model_probability * 100).toFixed(1)}%`} accent />
+            )}
+            {row.raw_model_probability != null &&
+              row.calibrated_model_probability != null &&
+              Math.abs(row.raw_model_probability - row.calibrated_model_probability) > 0.001 && (
+              <Row
+                label="Raw → calibrated"
+                value={`${(row.raw_model_probability * 100).toFixed(1)}% → ${(row.calibrated_model_probability * 100).toFixed(1)}%`}
+              />
             )}
           </div>
         </div>

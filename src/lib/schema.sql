@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS scan_snapshots (
     line REAL,
     odds_american INTEGER,
     model_probability REAL,
+    -- Model 2.0 Phase 3: model_probability is calibrated when present.
+    raw_model_probability REAL,
+    calibrated_model_probability REAL,
     edge REAL,
     needs_review INTEGER NOT NULL DEFAULT 0,
     projection_mean REAL,
