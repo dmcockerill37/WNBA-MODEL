@@ -3,11 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-<<<<<<< HEAD
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-=======
 import ActionsMenu from "./ActionsMenu";
->>>>>>> cursor/actions-menu-79fd
 
 const links = [
   { href: "/today", label: "Today" },
@@ -66,30 +63,33 @@ export default function Nav() {
 
   if (isMobile) {
     return (
-      <nav style={{ ...NAV_STYLE, justifyContent: "space-between" }}>
+      <nav style={{ ...NAV_STYLE, justifyContent: "space-between", gap: "8px" }}>
         {brand}
-        <button
-          onClick={() => setIsOpen((o) => !o)}
-          aria-label={isOpen ? "Close menu" : "Open menu"}
-          aria-expanded={isOpen}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "var(--text-primary)",
-            cursor: "pointer",
-            fontSize: "22px",
-            lineHeight: 1,
-            padding: 0,
-            width: "44px",
-            height: "44px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          {isOpen ? "✕" : "☰"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <ActionsMenu />
+          <button
+            onClick={() => setIsOpen((o) => !o)}
+            aria-label={isOpen ? "Close menu" : "Open menu"}
+            aria-expanded={isOpen}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--text-primary)",
+              cursor: "pointer",
+              fontSize: "22px",
+              lineHeight: 1,
+              padding: 0,
+              width: "44px",
+              height: "44px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {isOpen ? "✕" : "☰"}
+          </button>
+        </div>
 
         {isOpen && (
           <>
