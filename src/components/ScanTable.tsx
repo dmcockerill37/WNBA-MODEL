@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { betKey } from "@/lib/betKey";
 import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel, edgeTier, EdgeTier, primaryEdge } from "@/lib/types";
 import TierBadge from "./TierBadge";
 import Drawer from "./Drawer";
@@ -27,8 +28,15 @@ interface Props {
   placedKeys: Set<string>;
 }
 
-function betKey(row: ScanRow, gameDate: string): string {
-  return `${row.player_name}|${row.stat_category}|${row.selection_type}|${row.sportsbook}|${row.line}|${gameDate}`;
+function rowBetKey(row: ScanRow, gameDate: string): string {
+  return betKey({
+    player_name: row.player_name,
+    stat_category: row.stat_category,
+    selection_type: row.selection_type,
+    sportsbook: row.sportsbook,
+    line: row.line,
+    game_date: gameDate,
+  });
 }
 
 export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }: Props) {
@@ -36,16 +44,18 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
   const [drawerRow, setDrawerRow] = useState<ScanRow | null>(null);
   const [pageSize, setPageSize] = useState<PageSize>(10);
+  const [trackError, setTrackError] = useState<string | null>(null);
 
   const clean = rows.filter((r) => !r.needs_review);
   const review = rows.filter((r) => r.needs_review);
 
   async function togglePlaced(row: ScanRow, e: React.MouseEvent) {
     e.stopPropagation();
-    const key = betKey(row, gameDate);
+    const key = rowBetKey(row, gameDate);
     if (loadingKeys.has(key)) return;
 
     setLoadingKeys((prev) => new Set([...prev, key]));
+    setTrackError(null);
     const isPlaced = placed.has(key);
 
     try {
@@ -65,6 +75,8 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
             next.delete(key);
             return next;
           });
+        } else {
+          setTrackError("Couldn’t remove bet from tracker. Try again.");
         }
       } else {
         const res = await fetch("/api/placed-bets", {
@@ -83,8 +95,12 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
         });
         if (res.ok) {
           setPlaced((prev) => new Set([...prev, key]));
+        } else {
+          setTrackError("Couldn’t add bet to tracker. Try again.");
         }
       }
+    } catch {
+      setTrackError("Couldn’t reach the server. Check your connection and try again.");
     } finally {
       setLoadingKeys((prev) => {
         const next = new Set(prev);
@@ -96,6 +112,22 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
 
   return (
     <div>
+      {trackError && (
+        <div
+          role="alert"
+          style={{
+            marginBottom: "12px",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            border: "1px solid rgba(248,113,113,0.35)",
+            background: "rgba(248,113,113,0.1)",
+            color: "#f87171",
+            fontSize: "13px",
+          }}
+        >
+          {trackError}
+        </div>
+      )}
       {rows.length > 0 && (
         <div
           style={{
@@ -241,7 +273,7 @@ function ScanSection({
             </thead>
             <tbody>
               {visible.map((row, idx) => {
-                const key = betKey(row, gameDate);
+                const key = rowBetKey(row, gameDate);
                 const isPlaced = placed.has(key);
                 const isLoading = loadingKeys.has(key);
                 const tier = edgeTier(primaryEdge(row));

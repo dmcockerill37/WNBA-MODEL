@@ -1,4 +1,5 @@
 import { sql } from "./db";
+import { betKey } from "./betKey";
 import { ScanRow, PlacedBet, HistoryRow } from "./types";
 
 export async function getScanRows(gameDate: string, league = "wnba"): Promise<ScanRow[]> {
@@ -78,9 +79,15 @@ export async function getPlacedKeys(gameDate: string): Promise<Set<string>> {
       WHERE game_date = ${gameDate}
     `;
     return new Set(
-      rows.map(
-        (r) =>
-          `${r.player_name}|${r.stat_category}|${r.selection_type}|${r.sportsbook}|${r.line}|${r.game_date}`
+      rows.map((r) =>
+        betKey({
+          player_name: String(r.player_name),
+          stat_category: String(r.stat_category),
+          selection_type: String(r.selection_type),
+          sportsbook: String(r.sportsbook),
+          line: r.line as number | string,
+          game_date: r.game_date as string | Date,
+        })
       )
     );
   } catch {
@@ -88,7 +95,22 @@ export async function getPlacedKeys(gameDate: string): Promise<Set<string>> {
   }
 }
 
+function mapPlacedBet(r: Record<string, unknown>): PlacedBet {
+  return {
+    ...(r as unknown as PlacedBet),
+    edge_at_flag: r.edge_at_flag != null ? Number(r.edge_at_flag) : null,
+    clv_probability: r.clv_probability != null ? Number(r.clv_probability) : null,
+    result_actual_value:
+      r.result_actual_value != null ? Number(r.result_actual_value) : null,
+    result_status: (r.result_status as PlacedBet["result_status"]) ?? null,
+    closing_odds_american:
+      r.closing_odds_american != null ? Number(r.closing_odds_american) : null,
+  };
+}
+
 export async function getPlacedBets(): Promise<PlacedBet[]> {
+  // Prefer journal enrichment for CLV/result. If that join fails (bad
+  // event_start_time text, etc.), fall back so tracked bets still appear.
   try {
     const rows = await sql`
       SELECT
@@ -99,22 +121,54 @@ export async function getPlacedBets(): Promise<PlacedBet[]> {
         bj.closing_odds_american,
         bj.edge_at_flag
       FROM placed_bets pb
-      LEFT JOIN bet_journal bj
-        ON bj.player_name = pb.player_name
-        AND bj.stat_category = pb.stat_category
-        AND bj.selection_type = pb.selection_type
-        AND bj.sportsbook = pb.sportsbook
-        AND DATE(bj.event_start_time) = pb.game_date
+      LEFT JOIN LATERAL (
+        SELECT
+          result_status,
+          result_actual_value,
+          clv_probability,
+          closing_odds_american,
+          edge_at_flag
+        FROM bet_journal bj
+        WHERE bj.player_name = pb.player_name
+          AND bj.stat_category = pb.stat_category
+          AND bj.selection_type = pb.selection_type
+          AND bj.sportsbook = pb.sportsbook
+          AND (
+            bj.flagged_line IS NULL
+            OR ABS(bj.flagged_line - pb.line) < 0.01
+          )
+          AND bj.event_start_time IS NOT NULL
+          AND bj.event_start_time ~ '^[0-9]{4}-'
+          AND (bj.event_start_time::timestamptz AT TIME ZONE 'America/New_York')::date::text
+            = pb.game_date
+        ORDER BY bj.resolved_at DESC NULLS LAST, bj.id DESC
+        LIMIT 1
+      ) bj ON true
       ORDER BY pb.game_date DESC, pb.placed_at DESC
     `;
-    return rows.map((r) => ({
-      ...r,
-      edge_at_flag: r.edge_at_flag != null ? Number(r.edge_at_flag) : null,
-      clv_probability: r.clv_probability != null ? Number(r.clv_probability) : null,
-      result_actual_value:
-        r.result_actual_value != null ? Number(r.result_actual_value) : null,
-    })) as PlacedBet[];
-  } catch {
+    return rows.map((r) => mapPlacedBet(r as Record<string, unknown>));
+  } catch (err) {
+    console.error("getPlacedBets join error, falling back:", err);
+  }
+
+  try {
+    const rows = await sql`
+      SELECT *
+      FROM placed_bets
+      ORDER BY game_date DESC, placed_at DESC
+    `;
+    return rows.map((r) =>
+      mapPlacedBet({
+        ...r,
+        result_status: null,
+        result_actual_value: null,
+        clv_probability: null,
+        closing_odds_american: null,
+        edge_at_flag: null,
+      } as Record<string, unknown>)
+    );
+  } catch (err) {
+    console.error("getPlacedBets error:", err);
     return [];
   }
 }
