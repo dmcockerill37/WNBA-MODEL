@@ -1,0 +1,23 @@
+Copy these files into the bet-model (Modeling) repo, then commit + push:
+
+  .github/workflows/wnba-scan.yml
+  .github/workflows/wnba-pinnacle-check.yml
+  propmodel/pinnacle_check.py
+
+Wire the CLI using propmodel/__main___pinnacle_check.patch.py (add import,
+argparse subcommand, and dispatch branch).
+
+Repo secrets required on bet-model:
+  DATABASE_URL
+  NEON_DATABASE_URL   (required for dashboard updates — add if missing)
+  SHARPAPI_KEY        (scan workflow; optional for pinnacle-check)
+  Guest-odds secrets as needed for scan-sheets (DK_RELAY_*, PINNACLE_X_API_KEY, …)
+
+Optional repo variables:
+  SOFT_BOOKS, FANDUEL_STATE, BETRIVERS_STATE, KAMBI_OPERATOR
+
+Vercel (WNBA-MODEL) env — set in project settings for Production + Preview:
+  GITHUB_PAT          (actions:write on bet-model)
+  GITHUB_REPO=dmcockerill37/bet-model
+  RUN_MODEL_SECRET    (any long random string; enables Actions menu)
+  DATABASE_URL        (already set)

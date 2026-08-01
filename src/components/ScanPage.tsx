@@ -51,7 +51,9 @@ export default async function ScanPage({ gameDate, label }: Props) {
           </div>
         ) : (
           <div style={{ marginTop: "8px", fontSize: "13px", color: "var(--text-muted)" }}>
-            No scan data yet. Run{" "}
+            No scan data yet. Use{" "}
+            <span style={{ color: "var(--text-secondary)" }}>Actions → Run scan</span>
+            {" "}or{" "}
             <code
               style={{
                 background: "var(--bg-card)",
@@ -62,8 +64,8 @@ export default async function ScanPage({ gameDate, label }: Props) {
               }}
             >
               /scan-wnba {label.toLowerCase()}
-            </code>{" "}
-            to populate.
+            </code>
+            .
           </div>
         )}
       </div>

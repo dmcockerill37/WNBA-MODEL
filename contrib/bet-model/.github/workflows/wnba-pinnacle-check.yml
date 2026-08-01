@@ -1,0 +1,37 @@
+name: WNBA Pinnacle odds check
+
+# Dashboard "Pinnacle odds check" action. Re-scrapes Pinnacle for prior-scan
+# rows that lacked fair_value_source=pinnacle and updates Neon.
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: '"today", "tomorrow", or YYYY-MM-DD (US Eastern)'
+        required: false
+        default: today
+        type: string
+
+jobs:
+  pinnacle-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Install Playwright Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Re-check Pinnacle fair for missing rows
+        env:
+          DATE: ${{ inputs.date || 'today' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          PINNACLE_X_API_KEY: ${{ secrets.PINNACLE_X_API_KEY }}
+        run: |
+          uv run python -m propmodel pinnacle-check wnba --date "$DATE"

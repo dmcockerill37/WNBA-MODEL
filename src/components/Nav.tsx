@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+<<<<<<< HEAD
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+=======
+import ActionsMenu from "./ActionsMenu";
+>>>>>>> cursor/actions-menu-79fd
 
 const links = [
   { href: "/today", label: "Today" },
@@ -186,6 +190,8 @@ export default function Nav() {
           </Link>
         );
       })}
+
+      <ActionsMenu />
     </nav>
   );
 }
