@@ -42,8 +42,9 @@ async function ghFetch(path: string, init?: RequestInit): Promise<Response> {
 
 /**
  * Resolve GITHUB_REF (default main) to the current tip commit SHA.
- * Every Actions click must run whatever is newest on that branch — not a
- * stale symbolic checkout or an old GITHUB_REF pin.
+ * Returned for logging/UI only — workflow_dispatch cannot take a bare SHA
+ * as `ref` (GitHub 422 "No ref found"). Dispatch uses the branch name;
+ * Actions then checks out that branch tip at run start (= newest code).
  */
 async function resolveTipSha(ref: string): Promise<string> {
   const { owner, name } = githubConfig();
@@ -70,6 +71,7 @@ export async function dispatchWorkflow(args: {
 }): Promise<{ workflow: string; runId: number | null; ref: string }> {
   const { owner, name, ref: branchOrRef } = githubConfig();
   const workflow = WORKFLOW_BY_ACTION[args.action];
+  // Resolve tip for observability; dispatch must use the branch/tag name.
   const tipSha = await resolveTipSha(branchOrRef);
 
   const inputs: Record<string, string> = {};
@@ -83,9 +85,7 @@ export async function dispatchWorkflow(args: {
     {
       method: "POST",
       body: JSON.stringify({
-        // Pin the run to the tip SHA resolved at click time so the job
-        // cannot race a mid-flight branch move onto older code.
-        ref: tipSha,
+        ref: branchOrRef,
         inputs,
       }),
     },
