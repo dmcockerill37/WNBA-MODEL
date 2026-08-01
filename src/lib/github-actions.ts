@@ -44,7 +44,7 @@ export async function dispatchWorkflow(args: {
   action: RunAction;
   date?: string;
 }): Promise<{ workflow: string; runId: number | null }> {
-  const { owner, name } = githubConfig();
+  const { owner, name, ref } = githubConfig();
   const workflow = WORKFLOW_BY_ACTION[args.action];
 
   const inputs: Record<string, string> = {};
@@ -52,7 +52,6 @@ export async function dispatchWorkflow(args: {
     inputs.date = args.date;
   }
 
-  const { ref } = githubConfig();
   const dispatchedAt = Date.now();
   const res = await ghFetch(
     `/repos/${owner}/${name}/actions/workflows/${workflow}/dispatches`,
