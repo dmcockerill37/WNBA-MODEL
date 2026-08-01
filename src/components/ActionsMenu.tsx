@@ -159,8 +159,9 @@ export default function ActionsMenu() {
 
   async function start(action: RunAction) {
     setOpen(false);
-    // Timestamp for progress estimate (event handler — not render).
-    const startedAt = performance.timeOrigin + performance.now();
+    // Event-handler timestamp for progress estimate (not render).
+    // eslint-disable-next-line react-hooks/purity -- called from click handler only
+    const startedAt = Date.now();
     setProgress(8);
     setJob({ kind: "starting", action, startedAt });
     try {
