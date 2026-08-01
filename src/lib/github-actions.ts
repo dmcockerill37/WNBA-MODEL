@@ -15,8 +15,8 @@ export { isRunAction };
 function githubConfig() {
   const token = process.env.GITHUB_PAT || process.env.GITHUB_TOKEN;
   const repo = process.env.GITHUB_REPO || "dmcockerill37/bet-model";
-  // Model 2.0 lives on this branch in bet-model / Modeling.
-  const ref = process.env.GITHUB_REF || "model-2.0";
+  // Model 2.0 is merged into bet-model main.
+  const ref = process.env.GITHUB_REF || "main";
   if (!token) {
     throw new Error("GITHUB_PAT is not configured");
   }
