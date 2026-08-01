@@ -8,6 +8,7 @@ export async function getScanRows(gameDate: string, league = "wnba"): Promise<Sc
       FROM scan_snapshots
       WHERE league = ${league}
         AND snapshot_game_date = ${gameDate}
+        AND snapshot_game_date != 'all'
       ORDER BY needs_review ASC, edge DESC
     `;
     return rows.map((r) => ({ ...r, needs_review: r.needs_review === 1 || r.needs_review === true })) as ScanRow[];
