@@ -159,7 +159,8 @@ export default function ActionsMenu() {
 
   async function start(action: RunAction) {
     setOpen(false);
-    const startedAt = Date.now();
+    // Timestamp for progress estimate (event handler — not render).
+    const startedAt = performance.timeOrigin + performance.now();
     setProgress(8);
     setJob({ kind: "starting", action, startedAt });
     try {
