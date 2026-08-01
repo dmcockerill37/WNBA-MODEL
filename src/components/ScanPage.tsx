@@ -16,7 +16,13 @@ export default async function ScanPage({ gameDate, label }: Props) {
 
   const clean = rows.filter((r) => !r.needs_review).length;
   const review = rows.filter((r) => r.needs_review).length;
-  const snapshotTime = rows[0]?.snapshot_taken_at;
+  // Newest snapshot across the slate (not the top-edge row — those can be stale).
+  const snapshotTime = rows.reduce<string | null>((latest, row) => {
+    const t = row.snapshot_taken_at;
+    if (!t) return latest;
+    if (!latest) return t;
+    return new Date(t) > new Date(latest) ? t : latest;
+  }, null);
 
   return (
     <div className="page-container" style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 20px" }}>
