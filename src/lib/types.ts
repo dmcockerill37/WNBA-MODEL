@@ -14,7 +14,12 @@ export interface ScanRow {
   line: number;
   odds_american: number;
   model_probability: number;
+  /** Primary edge: model − fair/devigged market (Model 2.0 Phase 1). */
   edge: number;
+  /** Explicit fair edge; null on pre-Phase-1 snapshot rows. */
+  edge_vs_fair: number | null;
+  /** Soft-book implied (with vig) diagnostic; not the rank key. */
+  raw_book_edge: number | null;
   needs_review: boolean;
   projection_mean: number | null;
   projection_std: number | null;
@@ -93,6 +98,16 @@ export function formatOdds(american: number): string {
 
 export function formatEdge(edge: number): string {
   return `${(edge * 100).toFixed(1)}%`;
+}
+
+/** Primary display edge: prefer explicit edge_vs_fair when present. */
+export function primaryEdge(row: Pick<ScanRow, "edge" | "edge_vs_fair">): number {
+  return row.edge_vs_fair ?? row.edge;
+}
+
+/** Label for primary edge: distinguish Phase-1 fair edge from legacy vigged edge. */
+export function primaryEdgeLabel(row: Pick<ScanRow, "edge_vs_fair">): string {
+  return row.edge_vs_fair != null ? "Edge vs fair" : "Edge (legacy)";
 }
 
 export function statLabel(stat: string): string {

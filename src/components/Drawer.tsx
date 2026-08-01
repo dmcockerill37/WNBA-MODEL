@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
+import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel, edgeTier, EdgeTier, primaryEdge, primaryEdgeLabel } from "@/lib/types";
 import TierBadge from "./TierBadge";
 
 const TIER_COLOR: Record<EdgeTier, string> = {
@@ -32,7 +32,9 @@ export default function Drawer({ row, onClose }: Props) {
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  const tier = edgeTier(row.edge);
+  // Model 2.0 Phase 1: primary edge is vs fair/devigged market.
+  const edge = primaryEdge(row);
+  const tier = edgeTier(edge);
   const tierColor = TIER_COLOR[tier];
   const event = formatEvent(row);
   const eventMeta = formatEventMeta(row);
@@ -127,12 +129,14 @@ export default function Drawer({ row, onClose }: Props) {
           }}
         >
           {[
-            { label: "Edge", value: formatEdge(row.edge), color: tierColor },
-            { label: "Tier", value: <TierBadge edge={row.edge} /> },
+            { label: primaryEdgeLabel(row), value: formatEdge(edge), color: tierColor },
+            { label: "Tier", value: <TierBadge edge={edge} /> },
+            { label: "Raw book edge", value: row.raw_book_edge != null ? formatEdge(row.raw_book_edge) : "--" },
             { label: "Games used", value: row.n_games_used ?? "--" },
             { label: "Book odds", value: row.odds_american != null ? formatOdds(row.odds_american) : "--" },
             { label: "Pinnacle", value: row.fair_value_odds != null && row.fair_value_source === "pinnacle" ? formatOdds(row.fair_value_odds) : "--" },
             { label: "Model odds", value: row.model_probability != null ? formatOdds(modelAmerican(row.model_probability)) : "--", color: "#3b82f6" },
+            { label: "Fair prob", value: row.fair_probability != null ? `${(row.fair_probability * 100).toFixed(1)}%` : "--" },
             { label: "Result", value: resultLabel, color: resultColor },
             { label: "Actual", value: row.result_actual_value != null ? row.result_actual_value : "--" },
           ].map((stat, i) => (
