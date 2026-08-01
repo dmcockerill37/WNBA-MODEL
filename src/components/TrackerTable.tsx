@@ -17,6 +17,7 @@ import FilterSelect from "./filters/FilterSelect";
 import SegmentedControl, { type SegmentOption } from "./filters/SegmentedControl";
 import { labelStyle } from "./filters/filterStyles";
 import { useDebouncedValue } from "./filters/useDebouncedValue";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 const RESULT_STYLE: Record<string, { color: string; bg: string; label: string }> = {
   won: { color: "#34d399", bg: "rgba(52,211,153,0.12)", label: "W" },
@@ -59,6 +60,7 @@ export default function TrackerTable({ bets }: { bets: PlacedBet[] }) {
   const [stat, setStat] = useState("");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 150);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const bookOptions = useMemo(() => {
     const books = Array.from(new Set(bets.map((b) => b.sportsbook))).sort();
@@ -213,6 +215,114 @@ export default function TrackerTable({ bets }: { bets: PlacedBet[] }) {
             </button>
           )}
         </div>
+      ) : isMobile ? (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {visible.map((bet) => {
+              const rs = bet.result_status ? RESULT_STYLE[bet.result_status] : null;
+              const clvSign = bet.clv_probability != null ? (bet.clv_probability >= 0 ? "+" : "") : "";
+              const clvColor =
+                bet.clv_probability == null
+                  ? "var(--text-muted)"
+                  : bet.clv_probability > 0
+                  ? "#34d399"
+                  : "#f87171";
+
+              return (
+                <div
+                  key={bet.id}
+                  style={{
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "10px",
+                    padding: "12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "7px",
+                  }}
+                >
+                  {/* player + date */}
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: "14px" }}>
+                      {bet.player_name}
+                    </span>
+                    <span style={{ color: "var(--text-muted)", fontSize: "12px", whiteSpace: "nowrap" }}>
+                      {bet.game_date}
+                    </span>
+                  </div>
+
+                  {/* stat + side + line + tier */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+                    <span style={{ color: "var(--text-secondary)" }}>{statLabel(bet.stat_category)}</span>
+                    <span
+                      style={{
+                        color: bet.selection_type === "over" ? "#60a5fa" : "#fb923c",
+                        background: bet.selection_type === "over" ? "rgba(96,165,250,0.12)" : "rgba(251,146,60,0.12)",
+                        borderRadius: "4px",
+                        padding: "1px 6px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {bet.selection_type}
+                    </span>
+                    <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{bet.line}</span>
+                    {bet.edge_at_flag != null && <TierBadge edge={bet.edge_at_flag} />}
+                  </div>
+
+                  {/* book + odds + wager */}
+                  <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                    {bookLabel(bet.sportsbook)}{" "}
+                    <span style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+                      {bet.odds_american != null ? formatOdds(bet.odds_american) : "--"}
+                    </span>
+                    {bet.wager != null && (
+                      <span style={{ color: "var(--text-muted)", marginLeft: "8px" }}>
+                        ${bet.wager.toFixed(0)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* result + CLV */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      {rs ? (
+                        <span
+                          style={{
+                            color: rs.color,
+                            background: rs.bg,
+                            borderRadius: "4px",
+                            padding: "2px 8px",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {rs.label}
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
+                      )}
+                    </div>
+                    <span style={{ color: clvColor, fontVariantNumeric: "tabular-nums", fontSize: "13px" }}>
+                      {bet.clv_probability != null
+                        ? `CLV ${clvSign}${(bet.clv_probability * 100).toFixed(1)}%`
+                        : "--"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={filtered.length}
+            onPageChange={setPage}
+            onPageSizeChange={changePageSize}
+            showPageSize={false}
+          />
+        </>
       ) : (
         <>
           <div

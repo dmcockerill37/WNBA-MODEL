@@ -23,7 +23,7 @@ export default async function HistoryPage() {
   const groups = dateKeys.map((date) => ({ date, rows: byDate[date] }));
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 20px" }}>
+    <div className="page-container" style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 20px" }}>
       <div style={{ marginBottom: "24px" }}>
         <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 6px" }}>
           History

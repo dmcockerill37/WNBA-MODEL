@@ -119,7 +119,7 @@ export default async function TrackerPage() {
   const bucketRows = EDGE_BUCKETS.filter((b) => kpi.by_edge_bucket[b.key].total > 0);
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 20px" }}>
+    <div className="page-container" style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 20px" }}>
       <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "24px" }}>
         Bet Tracker
       </h1>

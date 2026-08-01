@@ -75,6 +75,7 @@ export default function Drawer({ row, onClose }: Props) {
       />
       {/* drawer */}
       <div
+        className="drawer-panel"
         style={{
           position: "fixed",
           right: 0,
@@ -122,6 +123,7 @@ export default function Drawer({ row, onClose }: Props) {
 
         {/* key stats row */}
         <div
+          className="drawer-stats-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",

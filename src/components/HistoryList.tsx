@@ -10,9 +10,21 @@ import {
   statLabel,
   bookLabel,
   primaryEdge,
+  edgeTier,
+  EdgeTier,
 } from "@/lib/types";
 import TierBadge from "./TierBadge";
 import Pagination, { PAGE_SIZE_OPTIONS, PageSize, slicePage } from "./Pagination";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+const TIER_COLOR: Record<EdgeTier, string> = {
+  S: "#a78bfa",
+  A: "#34d399",
+  B: "#60a5fa",
+  C: "#fbbf24",
+  D: "#fb923c",
+  F: "#f87171",
+};
 
 const RESULT_STYLE: Record<string, { color: string; bg: string; label: string }> = {
   won: { color: "#34d399", bg: "rgba(52,211,153,0.12)", label: "W" },
@@ -85,6 +97,7 @@ function HistoryDateSection({
   pageSize: PageSize;
 }) {
   const [page, setPage] = useState(1);
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const visible = slicePage(rows, page, pageSize);
 
   return (
@@ -102,112 +115,215 @@ function HistoryDateSection({
       >
         {date} &mdash; {rows.length} picks
       </div>
-      <div style={{ background: "var(--bg-card)", borderRadius: "10px", border: "1px solid var(--border)", overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Odds", "Model odds", "Result", "Actual"].map((h, i) => (
-                  <th
-                    key={h}
+
+      {isMobile ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {visible.map((row) => {
+            const edge = primaryEdge(row);
+            const tier = edgeTier(edge);
+            const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
+            const modelAmerican =
+              row.model_probability != null
+                ? row.model_probability >= 0.5
+                  ? Math.round((-100 * row.model_probability) / (1 - row.model_probability))
+                  : Math.round((100 * (1 - row.model_probability)) / row.model_probability)
+                : null;
+
+            return (
+              <div
+                key={row.id}
+                style={{
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "10px",
+                  padding: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "7px",
+                }}
+              >
+                {/* player + tier + edge */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ flex: 1, fontWeight: 600, color: "var(--text-primary)", fontSize: "14px", lineHeight: 1.3 }}>
+                    {row.player_name}
+                  </span>
+                  <TierBadge edge={edge} />
+                  <span style={{ color: TIER_COLOR[tier], fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>
+                    {formatEdge(edge)}
+                  </span>
+                </div>
+
+                {/* stat + side + line */}
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>{statLabel(row.stat_category)}</span>
+                  <span
                     style={{
-                      padding: "9px 14px",
-                      textAlign: i >= 5 ? "right" : "left",
-                      color: "var(--text-muted)",
-                      fontWeight: 500,
+                      color: row.selection_type === "over" ? "#60a5fa" : "#fb923c",
+                      background: row.selection_type === "over" ? "rgba(96,165,250,0.12)" : "rgba(251,146,60,0.12)",
+                      borderRadius: "4px",
+                      padding: "1px 6px",
                       fontSize: "11px",
-                      letterSpacing: "0.05em",
-                      whiteSpace: "nowrap",
+                      fontWeight: 600,
+                      textTransform: "uppercase",
                     }}
                   >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((row, idx) => {
-                const eventMeta = formatEventMeta(row);
-                const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
-                const modelAmerican =
-                  row.model_probability != null
-                    ? row.model_probability >= 0.5
-                      ? Math.round((-100 * row.model_probability) / (1 - row.model_probability))
-                      : Math.round((100 * (1 - row.model_probability)) / row.model_probability)
-                    : null;
-                return (
-                  <tr key={row.id} style={{ borderTop: idx > 0 ? "1px solid #111827" : undefined }}>
-                    <td style={{ padding: "9px 14px", fontWeight: 500 }}>{row.player_name}</td>
-                    <td style={{ padding: "9px 14px", color: "var(--text-secondary)" }}>{statLabel(row.stat_category)}</td>
-                    <td style={{ padding: "9px 14px" }}>
-                      <span
-                        style={{
-                          color: row.selection_type === "over" ? "#60a5fa" : "#fb923c",
-                          background: row.selection_type === "over" ? "rgba(96,165,250,0.12)" : "rgba(251,146,60,0.12)",
-                          borderRadius: "4px",
-                          padding: "2px 7px",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {row.selection_type}
-                      </span>
-                    </td>
-                    <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums" }}>{row.line}</td>
-                    <td style={{ padding: "9px 14px", whiteSpace: "nowrap" }}>
-                      <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
-                        {formatEvent(row)}
-                      </div>
-                      {eventMeta && (
-                        <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
-                          {eventMeta}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: "9px 14px", textAlign: "right" }}>
-                      <TierBadge edge={primaryEdge(row)} />
-                    </td>
-                    <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
-                      {formatEdge(primaryEdge(row))}
-                    </td>
-                    <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--text-secondary)", fontSize: "12px" }}>
-                      {bookLabel(row.sportsbook)}
-                    </td>
-                    <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                    {row.selection_type}
+                  </span>
+                  <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{row.line}</span>
+                </div>
+
+                {/* book odds vs model odds */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {bookLabel(row.sportsbook)}{" "}
+                    <span style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
                       {row.odds_american != null ? formatOdds(row.odds_american) : "--"}
-                    </td>
-                    <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "#3b82f6" }}>
-                      {modelAmerican != null ? formatOdds(modelAmerican) : "--"}
-                    </td>
-                    <td style={{ padding: "9px 14px", textAlign: "right" }}>
-                      {rs ? (
+                    </span>
+                  </span>
+                  {modelAmerican != null && (
+                    <span style={{ color: "#3b82f6", fontSize: "12px" }}>
+                      model {formatOdds(modelAmerican)}
+                    </span>
+                  )}
+                </div>
+
+                {/* result + actual */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {rs ? (
+                    <span
+                      style={{
+                        color: rs.color,
+                        background: rs.bg,
+                        borderRadius: "4px",
+                        padding: "2px 8px",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {rs.label}
+                    </span>
+                  ) : (
+                    <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
+                  )}
+                  {row.result_actual_value != null && (
+                    <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                      · {row.result_actual_value}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ background: "var(--bg-card)", borderRadius: "10px", border: "1px solid var(--border)", overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  {["Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Odds", "Model odds", "Result", "Actual"].map((h, i) => (
+                    <th
+                      key={h}
+                      style={{
+                        padding: "9px 14px",
+                        textAlign: i >= 5 ? "right" : "left",
+                        color: "var(--text-muted)",
+                        fontWeight: 500,
+                        fontSize: "11px",
+                        letterSpacing: "0.05em",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((row, idx) => {
+                  const eventMeta = formatEventMeta(row);
+                  const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
+                  const modelAmerican =
+                    row.model_probability != null
+                      ? row.model_probability >= 0.5
+                        ? Math.round((-100 * row.model_probability) / (1 - row.model_probability))
+                        : Math.round((100 * (1 - row.model_probability)) / row.model_probability)
+                      : null;
+                  return (
+                    <tr key={row.id} style={{ borderTop: idx > 0 ? "1px solid #111827" : undefined }}>
+                      <td style={{ padding: "9px 14px", fontWeight: 500 }}>{row.player_name}</td>
+                      <td style={{ padding: "9px 14px", color: "var(--text-secondary)" }}>{statLabel(row.stat_category)}</td>
+                      <td style={{ padding: "9px 14px" }}>
                         <span
                           style={{
-                            color: rs.color,
-                            background: rs.bg,
+                            color: row.selection_type === "over" ? "#60a5fa" : "#fb923c",
+                            background: row.selection_type === "over" ? "rgba(96,165,250,0.12)" : "rgba(251,146,60,0.12)",
                             borderRadius: "4px",
-                            padding: "2px 8px",
+                            padding: "2px 7px",
                             fontSize: "11px",
-                            fontWeight: 700,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
                           }}
                         >
-                          {rs.label}
+                          {row.selection_type}
                         </span>
-                      ) : (
-                        <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
-                      )}
-                    </td>
-                    <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
-                      {row.result_actual_value != null ? row.result_actual_value : "--"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums" }}>{row.line}</td>
+                      <td style={{ padding: "9px 14px", whiteSpace: "nowrap" }}>
+                        <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
+                          {formatEvent(row)}
+                        </div>
+                        {eventMeta && (
+                          <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
+                            {eventMeta}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                        <TierBadge edge={primaryEdge(row)} />
+                      </td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+                        {formatEdge(primaryEdge(row))}
+                      </td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--text-secondary)", fontSize: "12px" }}>
+                        {bookLabel(row.sportsbook)}
+                      </td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                        {row.odds_american != null ? formatOdds(row.odds_american) : "--"}
+                      </td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "#3b82f6" }}>
+                        {modelAmerican != null ? formatOdds(modelAmerican) : "--"}
+                      </td>
+                      <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                        {rs ? (
+                          <span
+                            style={{
+                              color: rs.color,
+                              background: rs.bg,
+                              borderRadius: "4px",
+                              padding: "2px 8px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {rs.label}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
+                        )}
+                      </td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
+                        {row.result_actual_value != null ? row.result_actual_value : "--"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
       <Pagination
         page={page}
         pageSize={pageSize}

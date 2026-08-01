@@ -18,7 +18,7 @@ export default async function ScanPage({ gameDate, label }: Props) {
   const snapshotTime = rows[0]?.snapshot_taken_at;
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 20px" }}>
+    <div className="page-container" style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 20px" }}>
       {/* header */}
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>

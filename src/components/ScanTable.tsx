@@ -6,6 +6,7 @@ import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabe
 import TierBadge from "./TierBadge";
 import Drawer from "./Drawer";
 import Pagination, { PAGE_SIZE_OPTIONS, PageSize, slicePage } from "./Pagination";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 const TIER_COLOR: Record<EdgeTier, string> = {
   S: "#a78bfa",
@@ -76,7 +77,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
             return next;
           });
         } else {
-          setTrackError("Couldn’t remove bet from tracker. Try again.");
+          setTrackError("Couldn't remove bet from tracker. Try again.");
         }
       } else {
         const res = await fetch("/api/placed-bets", {
@@ -96,11 +97,11 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
         if (res.ok) {
           setPlaced((prev) => new Set([...prev, key]));
         } else {
-          setTrackError("Couldn’t add bet to tracker. Try again.");
+          setTrackError("Couldn't add bet to tracker. Try again.");
         }
       }
     } catch {
-      setTrackError("Couldn’t reach the server. Check your connection and try again.");
+      setTrackError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setLoadingKeys((prev) => {
         const next = new Set(prev);
@@ -222,6 +223,7 @@ function ScanSection({
   onRowClick: (row: ScanRow) => void;
 }) {
   const [page, setPage] = useState(1);
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const visible = slicePage(sectionRows, page, pageSize);
 
   return (
@@ -239,189 +241,312 @@ function ScanSection({
       >
         {label} ({sectionRows.length})
       </div>
-      <div
-        style={{
-          background: "var(--bg-card)",
-          borderRadius: "10px",
-          border: "1px solid var(--border)",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["", "Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Book odds", "Pinnacle", "Model odds", "Result", "Actual", ""].map(
-                  (h, i) => (
-                    <th
-                      key={i}
-                      style={{
-                        padding: "10px 14px",
-                        textAlign: i === 0 ? "center" : i >= 6 ? "right" : "left",
-                        color: "var(--text-muted)",
-                        fontWeight: 500,
-                        fontSize: "11px",
-                        letterSpacing: "0.05em",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((row, idx) => {
-                const key = rowBetKey(row, gameDate);
-                const isPlaced = placed.has(key);
-                const isLoading = loadingKeys.has(key);
-                const tier = edgeTier(primaryEdge(row));
-                const eventMeta = formatEventMeta(row);
-                const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
-                const modelAmerican = row.model_probability
-                  ? row.model_probability >= 0.5
-                    ? Math.round(-100 * row.model_probability / (1 - row.model_probability))
-                    : Math.round(100 * (1 - row.model_probability) / row.model_probability)
-                  : null;
-                const displayEdge = primaryEdge(row);
 
-                return (
-                  <tr
-                    key={`${row.player_name}-${row.stat_category}-${row.selection_type}-${row.sportsbook}-${row.line}`}
-                    onClick={() => onRowClick(row)}
+      {isMobile ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {visible.map((row) => {
+            const key = rowBetKey(row, gameDate);
+            const isPlaced = placed.has(key);
+            const isLoading = loadingKeys.has(key);
+            const edge = primaryEdge(row);
+            const tier = edgeTier(edge);
+            const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
+
+            return (
+              <div
+                key={`${row.player_name}-${row.stat_category}-${row.selection_type}-${row.sportsbook}-${row.line}`}
+                onClick={() => onRowClick(row)}
+                style={{
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "10px",
+                  padding: "12px",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "7px",
+                }}
+              >
+                {/* player + tier badge */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <button
+                    onClick={(e) => onTogglePlaced(row, e)}
                     style={{
-                      borderTop: idx > 0 ? "1px solid var(--border-subtle, #111827)" : undefined,
-                      cursor: "pointer",
-                      transition: "background 0.1s ease",
+                      width: "36px",
+                      height: "36px",
+                      minWidth: "36px",
+                      borderRadius: "6px",
+                      border: isPlaced ? "none" : "1.5px solid #374151",
+                      background: isPlaced ? "#34d399" : "transparent",
+                      cursor: isLoading ? "wait" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: isLoading ? 0.5 : 1,
+                      transition: "all 0.15s ease",
+                      flexShrink: 0,
                     }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLTableRowElement).style.background = "var(--bg-card-hover)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLTableRowElement).style.background = "";
+                    title={isPlaced ? "Remove from tracker" : "Track this bet"}
+                  >
+                    {isPlaced && (
+                      <svg width="14" height="14" viewBox="0 0 10 10" fill="none">
+                        <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#0a0e17" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                  <span style={{ flex: 1, fontWeight: 600, color: "var(--text-primary)", fontSize: "14px", lineHeight: 1.3 }}>
+                    {row.player_name}
+                    {row.needs_review && (
+                      <span style={{ color: "#fbbf24", marginLeft: "6px", fontSize: "11px" }}>●</span>
+                    )}
+                  </span>
+                  <TierBadge edge={edge} />
+                </div>
+
+                {/* stat + side + line */}
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "44px", fontSize: "13px" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>{statLabel(row.stat_category)}</span>
+                  <span
+                    style={{
+                      color: row.selection_type === "over" ? "#60a5fa" : "#fb923c",
+                      background: row.selection_type === "over" ? "rgba(96,165,250,0.12)" : "rgba(251,146,60,0.12)",
+                      borderRadius: "4px",
+                      padding: "1px 6px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      textTransform: "uppercase",
                     }}
                   >
-                    <td style={{ padding: "10px 8px 10px 14px", textAlign: "center", width: "40px" }}>
-                      <button
-                        onClick={(e) => onTogglePlaced(row, e)}
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          borderRadius: "4px",
-                          border: isPlaced ? "none" : "1.5px solid #374151",
-                          background: isPlaced ? "#34d399" : "transparent",
-                          cursor: isLoading ? "wait" : "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          opacity: isLoading ? 0.5 : 1,
-                          transition: "all 0.15s ease",
-                        }}
-                        title={isPlaced ? "Remove from tracker" : "Track this bet"}
-                      >
-                        {isPlaced && (
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#0a0e17" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </button>
-                    </td>
-                    <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--text-primary)" }}>
-                      {row.player_name}
-                    </td>
-                    <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>
-                      {statLabel(row.stat_category)}
-                    </td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <span
-                        style={{
-                          color: row.selection_type === "over" ? "#60a5fa" : "#fb923c",
-                          background: row.selection_type === "over" ? "rgba(96,165,250,0.12)" : "rgba(251,146,60,0.12)",
-                          borderRadius: "4px",
-                          padding: "2px 7px",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {row.selection_type}
-                      </span>
-                    </td>
-                    <td style={{ padding: "10px 14px", fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>
-                      {row.line}
-                    </td>
-                    <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
-                      <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
-                        {formatEvent(row)}
-                      </div>
-                      {eventMeta && (
-                        <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
-                          {eventMeta}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                      <TierBadge edge={displayEdge} />
-                    </td>
-                    <td
+                    {row.selection_type}
+                  </span>
+                  <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{row.line}</span>
+                </div>
+
+                {/* book + odds + edge */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: "44px", fontSize: "13px" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {bookLabel(row.sportsbook)}{" "}
+                    <span style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+                      {row.odds_american != null ? formatOdds(row.odds_american) : "--"}
+                    </span>
+                  </span>
+                  <span style={{ color: TIER_COLOR[tier], fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                    {formatEdge(edge)}
+                  </span>
+                </div>
+
+                {/* result */}
+                {rs && (
+                  <div style={{ paddingLeft: "44px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span
                       style={{
-                        padding: "10px 14px",
-                        textAlign: "right",
-                        fontVariantNumeric: "tabular-nums",
-                        fontWeight: 600,
-                        color: TIER_COLOR[tier],
+                        color: rs.color,
+                        background: rs.bg,
+                        borderRadius: "4px",
+                        padding: "2px 8px",
+                        fontSize: "11px",
+                        fontWeight: 700,
                       }}
                     >
-                      {formatEdge(displayEdge)}
-                    </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-secondary)", fontSize: "12px" }}>
-                      {bookLabel(row.sportsbook)}
-                    </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-primary)" }}>
-                      {row.odds_american != null ? formatOdds(row.odds_american) : "--"}
-                    </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
-                      {row.fair_value_odds != null && row.fair_value_source === "pinnacle"
-                        ? formatOdds(row.fair_value_odds)
-                        : "--"}
-                    </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--accent)" }}>
-                      {modelAmerican != null ? formatOdds(modelAmerican) : "--"}
-                    </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                      {rs ? (
+                      {rs.label}
+                    </span>
+                    {row.result_actual_value != null && (
+                      <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                        {row.result_actual_value}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div
+          style={{
+            background: "var(--bg-card)",
+            borderRadius: "10px",
+            border: "1px solid var(--border)",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  {["", "Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Book odds", "Pinnacle", "Model odds", "Result", "Actual", ""].map(
+                    (h, i) => (
+                      <th
+                        key={i}
+                        style={{
+                          padding: "10px 14px",
+                          textAlign: i === 0 ? "center" : i >= 6 ? "right" : "left",
+                          color: "var(--text-muted)",
+                          fontWeight: 500,
+                          fontSize: "11px",
+                          letterSpacing: "0.05em",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((row, idx) => {
+                  const key = rowBetKey(row, gameDate);
+                  const isPlaced = placed.has(key);
+                  const isLoading = loadingKeys.has(key);
+                  const tier = edgeTier(primaryEdge(row));
+                  const eventMeta = formatEventMeta(row);
+                  const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
+                  const modelAmerican = row.model_probability
+                    ? row.model_probability >= 0.5
+                      ? Math.round(-100 * row.model_probability / (1 - row.model_probability))
+                      : Math.round(100 * (1 - row.model_probability) / row.model_probability)
+                    : null;
+                  const displayEdge = primaryEdge(row);
+
+                  return (
+                    <tr
+                      key={`${row.player_name}-${row.stat_category}-${row.selection_type}-${row.sportsbook}-${row.line}`}
+                      onClick={() => onRowClick(row)}
+                      style={{
+                        borderTop: idx > 0 ? "1px solid var(--border-subtle, #111827)" : undefined,
+                        cursor: "pointer",
+                        transition: "background 0.1s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLTableRowElement).style.background = "var(--bg-card-hover)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLTableRowElement).style.background = "";
+                      }}
+                    >
+                      <td style={{ padding: "10px 8px 10px 14px", textAlign: "center", width: "40px" }}>
+                        <button
+                          onClick={(e) => onTogglePlaced(row, e)}
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "4px",
+                            border: isPlaced ? "none" : "1.5px solid #374151",
+                            background: isPlaced ? "#34d399" : "transparent",
+                            cursor: isLoading ? "wait" : "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            opacity: isLoading ? 0.5 : 1,
+                            transition: "all 0.15s ease",
+                          }}
+                          title={isPlaced ? "Remove from tracker" : "Track this bet"}
+                        >
+                          {isPlaced && (
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#0a0e17" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
+                      <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--text-primary)" }}>
+                        {row.player_name}
+                      </td>
+                      <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>
+                        {statLabel(row.stat_category)}
+                      </td>
+                      <td style={{ padding: "10px 14px" }}>
                         <span
                           style={{
-                            color: rs.color,
-                            background: rs.bg,
+                            color: row.selection_type === "over" ? "#60a5fa" : "#fb923c",
+                            background: row.selection_type === "over" ? "rgba(96,165,250,0.12)" : "rgba(251,146,60,0.12)",
                             borderRadius: "4px",
-                            padding: "2px 8px",
+                            padding: "2px 7px",
                             fontSize: "11px",
-                            fontWeight: 700,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
                           }}
                         >
-                          {rs.label}
+                          {row.selection_type}
                         </span>
-                      ) : (
-                        <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
-                      )}
-                    </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
-                      {row.result_actual_value != null ? row.result_actual_value : "--"}
-                    </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                      {row.needs_review && (
-                        <span style={{ color: "#fbbf24", fontSize: "11px" }}>review</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td style={{ padding: "10px 14px", fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>
+                        {row.line}
+                      </td>
+                      <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
+                        <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
+                          {formatEvent(row)}
+                        </div>
+                        {eventMeta && (
+                          <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
+                            {eventMeta}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        <TierBadge edge={displayEdge} />
+                      </td>
+                      <td
+                        style={{
+                          padding: "10px 14px",
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                          fontWeight: 600,
+                          color: TIER_COLOR[tier],
+                        }}
+                      >
+                        {formatEdge(displayEdge)}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-secondary)", fontSize: "12px" }}>
+                        {bookLabel(row.sportsbook)}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-primary)" }}>
+                        {row.odds_american != null ? formatOdds(row.odds_american) : "--"}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
+                        {row.fair_value_odds != null && row.fair_value_source === "pinnacle"
+                          ? formatOdds(row.fair_value_odds)
+                          : "--"}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--accent)" }}>
+                        {modelAmerican != null ? formatOdds(modelAmerican) : "--"}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        {rs ? (
+                          <span
+                            style={{
+                              color: rs.color,
+                              background: rs.bg,
+                              borderRadius: "4px",
+                              padding: "2px 8px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {rs.label}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
+                        )}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
+                        {row.result_actual_value != null ? row.result_actual_value : "--"}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        {row.needs_review && (
+                          <span style={{ color: "#fbbf24", fontSize: "11px" }}>review</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
       <Pagination
         page={page}
         pageSize={pageSize}
