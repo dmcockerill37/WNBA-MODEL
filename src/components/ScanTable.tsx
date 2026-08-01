@@ -14,14 +14,20 @@ const TIER_COLOR: Record<EdgeTier, string> = {
   F: "#f87171",
 };
 
+const RESULT_STYLE: Record<string, { color: string; bg: string; label: string }> = {
+  won: { color: "#34d399", bg: "rgba(52,211,153,0.12)", label: "W" },
+  lost: { color: "#f87171", bg: "rgba(248,113,113,0.12)", label: "L" },
+  push: { color: "#9ca3af", bg: "rgba(156,163,175,0.12)", label: "P" },
+};
+
 interface Props {
   rows: ScanRow[];
   gameDate: string;
   placedKeys: Set<string>;
 }
 
-function betKey(row: ScanRow): string {
-  return `${row.player_name}|${row.stat_category}|${row.selection_type}|${row.sportsbook}|${row.line}|${row.snapshot_game_date}`;
+function betKey(row: ScanRow, gameDate: string): string {
+  return `${row.player_name}|${row.stat_category}|${row.selection_type}|${row.sportsbook}|${row.line}|${gameDate}`;
 }
 
 export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }: Props) {
@@ -34,7 +40,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
 
   async function togglePlaced(row: ScanRow, e: React.MouseEvent) {
     e.stopPropagation();
-    const key = betKey(row);
+    const key = betKey(row, gameDate);
     if (loadingKeys.has(key)) return;
 
     setLoadingKeys((prev) => new Set([...prev, key]));
@@ -48,7 +54,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
           selection_type: row.selection_type,
           sportsbook: row.sportsbook,
           line: String(row.line),
-          game_date: row.snapshot_game_date,
+          game_date: gameDate,
         });
         const res = await fetch(`/api/placed-bets?${params}`, { method: "DELETE" });
         if (res.ok) {
@@ -68,7 +74,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
             selection_type: row.selection_type,
             sportsbook: row.sportsbook,
             line: row.line,
-            game_date: row.snapshot_game_date,
+            game_date: gameDate,
             event_id: null,
             odds_american: row.odds_american,
           }),
@@ -114,7 +120,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["", "Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Book odds", "Pinnacle", "Model odds", ""].map(
+                {["", "Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Book odds", "Pinnacle", "Model odds", "Result", "Actual", ""].map(
                   (h, i) => (
                     <th
                       key={i}
@@ -136,11 +142,12 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
             </thead>
             <tbody>
               {sectionRows.map((row, idx) => {
-                const key = betKey(row);
+                const key = betKey(row, gameDate);
                 const isPlaced = placed.has(key);
                 const isLoading = loadingKeys.has(key);
                 const tier = edgeTier(row.edge);
                 const eventMeta = formatEventMeta(row);
+                const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
                 const modelAmerican = row.model_probability
                   ? row.model_probability >= 0.5
                     ? Math.round(-100 * row.model_probability / (1 - row.model_probability))
@@ -261,6 +268,29 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                     {/* model odds */}
                     <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--accent)" }}>
                       {modelAmerican != null ? formatOdds(modelAmerican) : "--"}
+                    </td>
+                    {/* result */}
+                    <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                      {rs ? (
+                        <span
+                          style={{
+                            color: rs.color,
+                            background: rs.bg,
+                            borderRadius: "4px",
+                            padding: "2px 8px",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {rs.label}
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
+                      )}
+                    </td>
+                    {/* actual */}
+                    <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
+                      {row.result_actual_value != null ? row.result_actual_value : "--"}
                     </td>
                     {/* flags */}
                     <td style={{ padding: "10px 14px", textAlign: "right" }}>

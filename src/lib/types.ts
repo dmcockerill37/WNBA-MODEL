@@ -35,6 +35,9 @@ export interface ScanRow {
   away_abbreviation: string | null;
   home_abbreviation: string | null;
   player_team: string | null;
+  // optional settlement from bet_journal (Yesterday / History)
+  result_status?: ResultStatus;
+  result_actual_value?: number | null;
 }
 
 export interface PlacedBet {

@@ -36,6 +36,15 @@ export default function Drawer({ row, onClose }: Props) {
   const tierColor = TIER_COLOR[tier];
   const event = formatEvent(row);
   const eventMeta = formatEventMeta(row);
+  const resultLabel =
+    row.result_status === "won" ? "W" :
+    row.result_status === "lost" ? "L" :
+    row.result_status === "push" ? "P" :
+    "open";
+  const resultColor =
+    row.result_status === "won" ? "#34d399" :
+    row.result_status === "lost" ? "#f87171" :
+    "var(--text-muted)";
 
   const flags: string[] = [];
   if (row.workload_flag) flags.push(row.workload_flag);
@@ -124,6 +133,8 @@ export default function Drawer({ row, onClose }: Props) {
             { label: "Book odds", value: row.odds_american != null ? formatOdds(row.odds_american) : "--" },
             { label: "Pinnacle", value: row.fair_value_odds != null && row.fair_value_source === "pinnacle" ? formatOdds(row.fair_value_odds) : "--" },
             { label: "Model odds", value: row.model_probability != null ? formatOdds(modelAmerican(row.model_probability)) : "--", color: "#3b82f6" },
+            { label: "Result", value: resultLabel, color: resultColor },
+            { label: "Actual", value: row.result_actual_value != null ? row.result_actual_value : "--" },
           ].map((stat, i) => (
             <div
               key={i}

@@ -3,15 +3,68 @@ import { ScanRow, PlacedBet, HistoryRow } from "./types";
 
 export async function getScanRows(gameDate: string, league = "wnba"): Promise<ScanRow[]> {
   try {
+    // Match dated snapshots plus undated ("all") rows whose tip-off falls on
+    // this Eastern calendar date. Dedupe prefers the dated snapshot.
     const rows = await sql`
       SELECT *
-      FROM scan_snapshots
-      WHERE league = ${league}
-        AND snapshot_game_date = ${gameDate}
-        AND snapshot_game_date != 'all'
+      FROM (
+        SELECT DISTINCT ON (
+          ss.player_name, ss.stat_category, ss.selection_type, ss.sportsbook, ss.line
+        )
+          ss.*,
+          bj.result_status,
+          bj.result_actual_value
+        FROM scan_snapshots ss
+        LEFT JOIN LATERAL (
+          SELECT result_status, result_actual_value
+          FROM bet_journal bj
+          WHERE bj.league = ss.league
+            AND bj.player_name = ss.player_name
+            AND bj.stat_category = ss.stat_category
+            AND bj.selection_type = ss.selection_type
+            AND bj.sportsbook = ss.sportsbook
+            AND (
+              bj.flagged_line IS NULL
+              OR ABS(bj.flagged_line - ss.line) < 0.01
+            )
+            AND (
+              (
+                ss.event_start_time IS NOT NULL
+                AND bj.event_start_time IS NOT NULL
+                AND bj.event_start_time = ss.event_start_time
+              )
+              OR (
+                bj.event_start_time IS NOT NULL
+                AND (bj.event_start_time::timestamptz AT TIME ZONE 'America/New_York')::date::text
+                  = ${gameDate}
+              )
+            )
+          ORDER BY bj.resolved_at DESC NULLS LAST, bj.id DESC
+          LIMIT 1
+        ) bj ON true
+        WHERE ss.league = ${league}
+          AND (
+            ss.snapshot_game_date = ${gameDate}
+            OR (
+              ss.event_start_time IS NOT NULL
+              AND (ss.event_start_time::timestamptz AT TIME ZONE 'America/New_York')::date::text
+                = ${gameDate}
+            )
+          )
+        ORDER BY
+          ss.player_name, ss.stat_category, ss.selection_type, ss.sportsbook, ss.line,
+          CASE WHEN ss.snapshot_game_date = ${gameDate} THEN 0 ELSE 1 END,
+          ss.snapshot_taken_at DESC
+      ) ranked
       ORDER BY needs_review ASC, edge DESC
     `;
-    return rows.map((r) => ({ ...r, needs_review: r.needs_review === 1 || r.needs_review === true })) as ScanRow[];
+    return rows.map((r) => ({
+      ...r,
+      needs_review: r.needs_review === 1 || r.needs_review === true,
+      result_status: (r.result_status as ScanRow["result_status"]) ?? null,
+      result_actual_value:
+        r.result_actual_value != null ? Number(r.result_actual_value) : null,
+    })) as ScanRow[];
   } catch {
     return [];
   }
