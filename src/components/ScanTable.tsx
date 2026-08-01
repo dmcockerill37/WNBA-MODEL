@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { betKey } from "@/lib/betKey";
 import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel, edgeTier, EdgeTier, primaryEdge } from "@/lib/types";
+import { formatScanTime } from "@/lib/formatScanTime";
 import TierBadge from "./TierBadge";
 import Drawer from "./Drawer";
 import Pagination, { PAGE_SIZE_OPTIONS, PageSize, slicePage } from "./Pagination";
@@ -335,6 +336,10 @@ function ScanSection({
                   </span>
                 </div>
 
+                <div style={{ paddingLeft: "44px", fontSize: "11px", color: "var(--text-muted)" }}>
+                  Scanned {formatScanTime(row.snapshot_taken_at)}
+                </div>
+
                 {/* result */}
                 {rs && (
                   <div style={{ paddingLeft: "44px", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -374,8 +379,24 @@ function ScanSection({
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  {["", "Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Book odds", "Pinnacle", "Model odds", "Result", "Actual", ""].map(
-                    (h, i) => (
+                  {[
+                    "",
+                    "Player",
+                    "Stat",
+                    "Side",
+                    "Line",
+                    "Event",
+                    "Tier",
+                    "Edge",
+                    "Book",
+                    "Book odds",
+                    "Pinnacle",
+                    "Model odds",
+                    "Scanned",
+                    "Result",
+                    "Actual",
+                    "",
+                  ].map((h, i) => (
                       <th
                         key={i}
                         style={{
@@ -511,6 +532,19 @@ function ScanSection({
                       </td>
                       <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--accent)" }}>
                         {modelAmerican != null ? formatOdds(modelAmerican) : "--"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "10px 14px",
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                          color: "var(--text-muted)",
+                          fontSize: "11px",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={row.snapshot_taken_at ?? undefined}
+                      >
+                        {formatScanTime(row.snapshot_taken_at)}
                       </td>
                       <td style={{ padding: "10px 14px", textAlign: "right" }}>
                         {rs ? (

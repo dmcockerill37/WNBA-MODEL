@@ -300,7 +300,7 @@ export default function ActionsMenu() {
                   ✓
                 </MarkerIcon>
                 <MarkerContent style={{ color: "var(--won)" }}>
-                  {ACTION_LABEL[job.action]} finished
+                  {ACTION_LABEL[job.action]} finished — check Last scan / Scanned
                 </MarkerContent>
               </Marker>
               <Progress value={100} />

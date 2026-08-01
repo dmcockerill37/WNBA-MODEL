@@ -1,6 +1,7 @@
 import { getScanRows, getPlacedKeys } from "@/lib/queries";
 import { formatDisplayDate } from "@/lib/dates";
 import ScanTable from "./ScanTable";
+import LastScanBadge from "./LastScanBadge";
 
 interface Props {
   gameDate: string;
@@ -37,17 +38,7 @@ export default async function ScanPage({ gameDate, label }: Props) {
             <span>
               <span style={{ color: "#fbbf24", fontWeight: 600 }}>{review}</span> needs review
             </span>
-            {snapshotTime && (
-              <span style={{ color: "var(--text-muted)" }}>
-                Last scan:{" "}
-                {new Date(snapshotTime).toLocaleTimeString("en-US", {
-                  timeZone: "America/New_York",
-                  hour: "numeric",
-                  minute: "2-digit",
-                  timeZoneName: "short",
-                })}
-              </span>
-            )}
+            <LastScanBadge snapshotTime={snapshotTime ?? null} />
           </div>
         ) : (
           <div style={{ marginTop: "8px", fontSize: "13px", color: "var(--text-muted)" }}>
