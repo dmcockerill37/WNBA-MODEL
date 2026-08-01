@@ -57,6 +57,12 @@ export interface PlacedBet {
   closing_odds_american: number | null;
 }
 
+/** Clean scan pick with optional settlement from bet_journal. */
+export interface HistoryRow extends ScanRow {
+  result_status: ResultStatus;
+  result_actual_value: number | null;
+}
+
 export interface BetTrackerKPIs {
   total: number;
   won: number;

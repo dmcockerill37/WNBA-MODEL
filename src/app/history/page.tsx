@@ -1,8 +1,22 @@
 import { getHistoryRows } from "@/lib/queries";
-import { formatOdds, formatEdge, formatEvent, formatEventMeta, rowGameDate, statLabel, bookLabel } from "@/lib/types";
+import {
+  formatOdds,
+  formatEdge,
+  formatEvent,
+  formatEventMeta,
+  rowGameDate,
+  statLabel,
+  bookLabel,
+} from "@/lib/types";
 import TierBadge from "@/components/TierBadge";
 
 export const revalidate = 300;
+
+const RESULT_STYLE: Record<string, { color: string; bg: string; label: string }> = {
+  won: { color: "#34d399", bg: "rgba(52,211,153,0.12)", label: "W" },
+  lost: { color: "#f87171", bg: "rgba(248,113,113,0.12)", label: "L" },
+  push: { color: "#9ca3af", bg: "rgba(156,163,175,0.12)", label: "P" },
+};
 
 export default async function HistoryPage() {
   const rows = await getHistoryRows(300);
@@ -14,6 +28,13 @@ export default async function HistoryPage() {
     return acc;
   }, {});
 
+  // Newest dates first; keep unknown last
+  const dateKeys = Object.keys(byDate).sort((a, b) => {
+    if (a === "unknown") return 1;
+    if (b === "unknown") return -1;
+    return b.localeCompare(a);
+  });
+
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 20px" }}>
       <div style={{ marginBottom: "24px" }}>
@@ -21,11 +42,11 @@ export default async function HistoryPage() {
           History
         </h1>
         <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>
-          All clean model picks from the last 30 scans, most recent first.
+          Clean model picks with win/loss and the actual prop result when settled.
         </p>
       </div>
 
-      {Object.keys(byDate).length === 0 ? (
+      {dateKeys.length === 0 ? (
         <div
           style={{
             background: "var(--bg-card)",
@@ -39,7 +60,9 @@ export default async function HistoryPage() {
           No scan history yet.
         </div>
       ) : (
-        Object.entries(byDate).map(([date, dateRows]) => (
+        dateKeys.map((date) => {
+          const dateRows = byDate[date];
+          return (
           <div key={date} style={{ marginBottom: "32px" }}>
             <div
               style={{
@@ -59,7 +82,7 @@ export default async function HistoryPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      {["Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Odds", "Model odds"].map((h, i) => (
+                      {["Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Odds", "Model odds", "Result", "Actual"].map((h, i) => (
                         <th
                           key={h}
                           style={{
@@ -69,6 +92,7 @@ export default async function HistoryPage() {
                             fontWeight: 500,
                             fontSize: "11px",
                             letterSpacing: "0.05em",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {h}
@@ -79,6 +103,7 @@ export default async function HistoryPage() {
                   <tbody>
                     {dateRows.map((row, idx) => {
                       const eventMeta = formatEventMeta(row);
+                      const rs = row.result_status ? RESULT_STYLE[row.result_status] : null;
                       const modelAmerican =
                         row.model_probability != null
                           ? row.model_probability >= 0.5
@@ -130,6 +155,27 @@ export default async function HistoryPage() {
                           <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "#3b82f6" }}>
                             {modelAmerican != null ? formatOdds(modelAmerican) : "--"}
                           </td>
+                          <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                            {rs ? (
+                              <span
+                                style={{
+                                  color: rs.color,
+                                  background: rs.bg,
+                                  borderRadius: "4px",
+                                  padding: "2px 8px",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {rs.label}
+                              </span>
+                            ) : (
+                              <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>open</span>
+                            )}
+                          </td>
+                          <td style={{ padding: "9px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
+                            {row.result_actual_value != null ? row.result_actual_value : "--"}
+                          </td>
                         </tr>
                       );
                     })}
@@ -138,7 +184,8 @@ export default async function HistoryPage() {
               </div>
             </div>
           </div>
-        ))
+          );
+        })
       )}
     </div>
   );

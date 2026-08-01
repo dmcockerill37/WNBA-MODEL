@@ -1,5 +1,5 @@
 import { sql } from "./db";
-import { ScanRow, PlacedBet } from "./types";
+import { ScanRow, PlacedBet, HistoryRow } from "./types";
 
 export async function getScanRows(gameDate: string, league = "wnba"): Promise<ScanRow[]> {
   try {
@@ -59,16 +59,55 @@ export async function getPlacedBets(): Promise<PlacedBet[]> {
   }
 }
 
-export async function getHistoryRows(limit = 200): Promise<ScanRow[]> {
+export async function getHistoryRows(limit = 200, league = "wnba"): Promise<HistoryRow[]> {
   try {
     const rows = await sql`
-      SELECT *
-      FROM scan_snapshots
-      WHERE needs_review = 0
-      ORDER BY snapshot_game_date DESC, edge DESC
+      SELECT
+        ss.*,
+        bj.result_status,
+        bj.result_actual_value
+      FROM scan_snapshots ss
+      LEFT JOIN LATERAL (
+        SELECT result_status, result_actual_value
+        FROM bet_journal bj
+        WHERE bj.league = ss.league
+          AND bj.player_name = ss.player_name
+          AND bj.stat_category = ss.stat_category
+          AND bj.selection_type = ss.selection_type
+          AND bj.sportsbook = ss.sportsbook
+          AND (
+            bj.flagged_line IS NULL
+            OR ABS(bj.flagged_line - ss.line) < 0.01
+          )
+          AND (
+            (
+              ss.event_start_time IS NOT NULL
+              AND bj.event_start_time IS NOT NULL
+              AND bj.event_start_time = ss.event_start_time
+            )
+            OR (
+              ss.snapshot_game_date IS NOT NULL
+              AND ss.snapshot_game_date != 'all'
+              AND bj.event_start_time IS NOT NULL
+              AND (bj.event_start_time::timestamptz AT TIME ZONE 'America/New_York')::date::text
+                = ss.snapshot_game_date
+            )
+          )
+        ORDER BY bj.resolved_at DESC NULLS LAST, bj.id DESC
+        LIMIT 1
+      ) bj ON true
+      WHERE ss.needs_review = 0
+        AND ss.league = ${league}
+      ORDER BY ss.event_start_time DESC NULLS LAST, ss.edge DESC
       LIMIT ${limit}
     `;
-    return rows as ScanRow[];
+    return rows.map((r) => ({
+      ...r,
+      needs_review: r.needs_review === 1 || r.needs_review === true,
+      result_status: (r.result_status as HistoryRow["result_status"]) ?? null,
+      result_actual_value:
+        r.result_actual_value != null ? Number(r.result_actual_value) : null,
+    })) as HistoryRow[];
   } catch {
     return [];
   }
