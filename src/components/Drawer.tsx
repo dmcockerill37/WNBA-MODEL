@@ -48,14 +48,51 @@ export default function Drawer({ row, onClose }: Props) {
     row.result_status === "lost" ? "#f87171" :
     "var(--text-muted)";
 
-  const flags: string[] = [];
-  if (row.workload_flag) flags.push(row.workload_flag);
-  if (row.model_pinnacle_divergence != null && row.model_pinnacle_divergence >= 0.08)
+  const REASON_LABEL: Record<string, string> = {
+    cal_swing_outlier: "calibration swing outlier",
+    large_edge_no_pinnacle: "large edge without Pinnacle",
+    model_pinnacle_outlier: "model vs pinnacle outlier",
+    pinnacle_outlier: "vs pinnacle outlier",
+    line_through_model: "line through model",
+    soft_book_outlier: "soft-book outlier",
+    line_spread: "line spread across books",
+    minutes_or_workload: "minutes / workload flag",
+    minutes_uncertainty: "minutes uncertainty",
+  };
+  const reasonList: string[] = Array.isArray(row.needs_review_reasons)
+    ? row.needs_review_reasons
+    : typeof row.needs_review_reasons === "string" && row.needs_review_reasons
+      ? (() => {
+          try {
+            const p = JSON.parse(row.needs_review_reasons);
+            return Array.isArray(p) ? p.map(String) : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+  const flags: string[] = reasonList.map((r) => REASON_LABEL[r] ?? r);
+  if (row.workload_flag && !flags.some((f) => f.includes("workload") || f.includes("minutes")))
+    flags.push(row.workload_flag);
+  if (
+    reasonList.length === 0 &&
+    row.model_pinnacle_divergence != null &&
+    row.model_pinnacle_divergence >= 0.08
+  )
     flags.push("model vs pinnacle outlier");
-  if (row.pinnacle_divergence != null && row.pinnacle_divergence >= 0.08)
+  if (
+    reasonList.length === 0 &&
+    row.pinnacle_divergence != null &&
+    row.pinnacle_divergence >= 0.08
+  )
     flags.push("vs pinnacle outlier");
-  if (row.line_spread != null && row.line_spread > 0)
+  if (reasonList.length === 0 && row.line_spread != null && row.line_spread > 0)
     flags.push(`line spread ${row.line_spread.toFixed(1)} across books`);
+
+  const rawP = row.raw_model_probability;
+  const calP = row.calibrated_model_probability ?? row.model_probability;
+  const calSwing =
+    rawP != null && calP != null ? Math.abs(calP - rawP) : null;
 
   const matchup = row.matchup_json ? (() => {
     try { return JSON.parse(row.matchup_json); } catch { return null; }
@@ -198,16 +235,44 @@ export default function Drawer({ row, onClose }: Props) {
             {row.model_probability != null && (
               <Row label="Model probability" value={`${(row.model_probability * 100).toFixed(1)}%`} accent />
             )}
-            {row.raw_model_probability != null &&
-              row.calibrated_model_probability != null &&
-              Math.abs(row.raw_model_probability - row.calibrated_model_probability) > 0.001 && (
+            {rawP != null && calP != null && (
               <Row
                 label="Raw → calibrated"
-                value={`${(row.raw_model_probability * 100).toFixed(1)}% → ${(row.calibrated_model_probability * 100).toFixed(1)}%`}
+                value={`${(rawP * 100).toFixed(1)}% → ${(calP * 100).toFixed(1)}%`}
+                detail={calSwing != null && calSwing >= 0.10 ? "cal swing ≥10pp" : undefined}
               />
+            )}
+            {calSwing != null && calSwing >= 0.10 && (
+              <div style={{ fontSize: "12px", color: "#fbbf24", marginTop: "4px" }}>
+                Calibration moved this side-prob by {(calSwing * 100).toFixed(1)}pp — treat with caution.
+              </div>
             )}
           </div>
         </div>
+
+        {/* review reason chips */}
+        {reasonList.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {reasonList.map((code) => (
+              <span
+                key={code}
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "#fbbf24",
+                  background: "rgba(251,191,36,0.08)",
+                  border: "1px solid rgba(251,191,36,0.25)",
+                  borderRadius: "4px",
+                  padding: "4px 8px",
+                }}
+              >
+                {REASON_LABEL[code] ?? code}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* matchup */}
         {matchup && (

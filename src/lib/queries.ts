@@ -2,6 +2,22 @@ import { sql } from "./db";
 import { betKey } from "./betKey";
 import { ScanRow, PlacedBet, HistoryRow } from "./types";
 
+function parseReviewReasons(raw: unknown): string[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if (!s) return [];
+    try {
+      const parsed = JSON.parse(s);
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return s.split(",").map((x) => x.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
 export async function getScanRows(gameDate: string, league = "wnba"): Promise<ScanRow[]> {
   try {
     // Match dated snapshots plus undated ("all") rows whose tip-off falls on
@@ -62,6 +78,7 @@ export async function getScanRows(gameDate: string, league = "wnba"): Promise<Sc
     return rows.map((r) => ({
       ...r,
       needs_review: r.needs_review === 1 || r.needs_review === true,
+      needs_review_reasons: parseReviewReasons(r.needs_review_reasons),
       result_status: (r.result_status as ScanRow["result_status"]) ?? null,
       result_actual_value:
         r.result_actual_value != null ? Number(r.result_actual_value) : null,
@@ -218,6 +235,7 @@ export async function getHistoryRows(limit = 200, league = "wnba"): Promise<Hist
     return rows.map((r) => ({
       ...r,
       needs_review: r.needs_review === 1 || r.needs_review === true,
+      needs_review_reasons: parseReviewReasons(r.needs_review_reasons),
       result_status: (r.result_status as HistoryRow["result_status"]) ?? null,
       result_actual_value:
         r.result_actual_value != null ? Number(r.result_actual_value) : null,

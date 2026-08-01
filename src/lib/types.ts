@@ -25,6 +25,8 @@ export interface ScanRow {
   /** Soft-book implied (with vig) diagnostic; not the rank key. */
   raw_book_edge: number | null;
   needs_review: boolean;
+  /** Pass-rule reason codes from Modeling (JSON array or parsed string[]). */
+  needs_review_reasons?: string[] | string | null;
   projection_mean: number | null;
   projection_std: number | null;
   distribution_type: string | null;
