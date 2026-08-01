@@ -108,3 +108,21 @@ export function bookLabel(book: string): string {
   };
   return map[book] ?? book;
 }
+
+export function formatEvent(row: Pick<ScanRow, "away_abbreviation" | "home_abbreviation" | "away_team" | "home_team">): string {
+  const away = row.away_abbreviation || row.away_team;
+  const home = row.home_abbreviation || row.home_team;
+  if (!away || !home) return "--";
+  return `${away} @ ${home}`;
+}
+
+export function formatEventTime(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

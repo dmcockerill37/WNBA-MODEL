@@ -1,5 +1,5 @@
 import { getHistoryRows, getAvailableDates } from "@/lib/queries";
-import { formatOdds, formatEdge, statLabel, bookLabel } from "@/lib/types";
+import { formatOdds, formatEdge, formatEvent, formatEventTime, statLabel, bookLabel } from "@/lib/types";
 import TierBadge from "@/components/TierBadge";
 
 export const revalidate = 300;
@@ -59,12 +59,12 @@ export default async function HistoryPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      {["Player", "Stat", "Side", "Line", "Tier", "Edge", "Book", "Odds", "Model odds"].map((h, i) => (
+                      {["Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Odds", "Model odds"].map((h, i) => (
                         <th
                           key={h}
                           style={{
                             padding: "9px 14px",
-                            textAlign: i >= 4 ? "right" : "left",
+                            textAlign: i >= 5 ? "right" : "left",
                             color: "var(--text-muted)",
                             fontWeight: 500,
                             fontSize: "11px",
@@ -78,6 +78,7 @@ export default async function HistoryPage() {
                   </thead>
                   <tbody>
                     {dateRows.map((row, idx) => {
+                      const eventTime = formatEventTime(row.event_start_time);
                       const modelAmerican =
                         row.model_probability != null
                           ? row.model_probability >= 0.5
@@ -104,6 +105,16 @@ export default async function HistoryPage() {
                             </span>
                           </td>
                           <td style={{ padding: "9px 14px", fontVariantNumeric: "tabular-nums" }}>{row.line}</td>
+                          <td style={{ padding: "9px 14px", whiteSpace: "nowrap" }}>
+                            <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
+                              {formatEvent(row)}
+                            </div>
+                            {eventTime && (
+                              <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
+                                {eventTime}
+                              </div>
+                            )}
+                          </td>
                           <td style={{ padding: "9px 14px", textAlign: "right" }}>
                             <TierBadge edge={row.edge} />
                           </td>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ScanRow, formatOdds, formatEdge, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
+import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventTime, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
 import TierBadge from "./TierBadge";
 import Drawer from "./Drawer";
 
@@ -114,13 +114,13 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["", "Player", "Stat", "Side", "Line", "Tier", "Edge", "Book", "Book odds", "Pinnacle", "Model odds", ""].map(
+                {["", "Player", "Stat", "Side", "Line", "Event", "Tier", "Edge", "Book", "Book odds", "Pinnacle", "Model odds", ""].map(
                   (h, i) => (
                     <th
                       key={i}
                       style={{
                         padding: "10px 14px",
-                        textAlign: i === 0 ? "center" : i >= 5 ? "right" : "left",
+                        textAlign: i === 0 ? "center" : i >= 6 ? "right" : "left",
                         color: "var(--text-muted)",
                         fontWeight: 500,
                         fontSize: "11px",
@@ -140,6 +140,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                 const isPlaced = placed.has(key);
                 const isLoading = loadingKeys.has(key);
                 const tier = edgeTier(row.edge);
+                const eventTime = formatEventTime(row.event_start_time);
                 const modelAmerican = row.model_probability
                   ? row.model_probability >= 0.5
                     ? Math.round(-100 * row.model_probability / (1 - row.model_probability))
@@ -215,6 +216,17 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                     {/* line */}
                     <td style={{ padding: "10px 14px", fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>
                       {row.line}
+                    </td>
+                    {/* event */}
+                    <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
+                      <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
+                        {formatEvent(row)}
+                      </div>
+                      {eventTime && (
+                        <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
+                          {eventTime}
+                        </div>
+                      )}
                     </td>
                     {/* tier */}
                     <td style={{ padding: "10px 14px", textAlign: "right" }}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { ScanRow, formatOdds, formatEdge, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
+import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventTime, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
 import TierBadge from "./TierBadge";
 
 const TIER_COLOR: Record<EdgeTier, string> = {
@@ -34,6 +34,8 @@ export default function Drawer({ row, onClose }: Props) {
 
   const tier = edgeTier(row.edge);
   const tierColor = TIER_COLOR[tier];
+  const event = formatEvent(row);
+  const eventTime = formatEventTime(row.event_start_time);
 
   const flags: string[] = [];
   if (row.workload_flag) flags.push(row.workload_flag);
@@ -86,9 +88,8 @@ export default function Drawer({ row, onClose }: Props) {
             </div>
             <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
               {statLabel(row.stat_category)} {row.selection_type} {row.line} &middot; {bookLabel(row.sportsbook)}
-              {row.event_start_time && (
-                <> &middot; {row.away_team} @ {row.home_team}</>
-              )}
+              {event !== "--" && <> &middot; {event}</>}
+              {eventTime && <> &middot; {eventTime}</>}
             </div>
           </div>
           <button
