@@ -19,5 +19,8 @@ Optional repo variables:
 Vercel (WNBA-MODEL) env — set in project settings for Production + Preview:
   GITHUB_PAT          (actions:write on bet-model)
   GITHUB_REPO=dmcockerill37/bet-model
+  GITHUB_REF=model-2.0
   RUN_MODEL_SECRET    (any long random string; enables Actions menu)
   DATABASE_URL        (already set)
+
+Apply the workflow files on the model-2.0 branch (not only main).

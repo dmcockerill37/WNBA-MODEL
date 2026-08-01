@@ -15,6 +15,8 @@ export { isRunAction };
 function githubConfig() {
   const token = process.env.GITHUB_PAT || process.env.GITHUB_TOKEN;
   const repo = process.env.GITHUB_REPO || "dmcockerill37/bet-model";
+  // Model 2.0 lives on this branch in bet-model / Modeling.
+  const ref = process.env.GITHUB_REF || "model-2.0";
   if (!token) {
     throw new Error("GITHUB_PAT is not configured");
   }
@@ -22,7 +24,7 @@ function githubConfig() {
   if (!owner || !name) {
     throw new Error("GITHUB_REPO must be owner/name");
   }
-  return { token, owner, name, repo };
+  return { token, owner, name, repo, ref };
 }
 
 async function ghFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -50,13 +52,14 @@ export async function dispatchWorkflow(args: {
     inputs.date = args.date;
   }
 
+  const { ref } = githubConfig();
   const dispatchedAt = Date.now();
   const res = await ghFetch(
     `/repos/${owner}/${name}/actions/workflows/${workflow}/dispatches`,
     {
       method: "POST",
       body: JSON.stringify({
-        ref: "main",
+        ref,
         inputs,
       }),
     },
