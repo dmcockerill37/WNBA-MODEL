@@ -1,5 +1,5 @@
 import { getHistoryRows, getAvailableDates } from "@/lib/queries";
-import { formatOdds, formatEdge, formatEvent, formatEventTime, statLabel, bookLabel } from "@/lib/types";
+import { formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel } from "@/lib/types";
 import TierBadge from "@/components/TierBadge";
 
 export const revalidate = 300;
@@ -78,7 +78,7 @@ export default async function HistoryPage() {
                   </thead>
                   <tbody>
                     {dateRows.map((row, idx) => {
-                      const eventTime = formatEventTime(row.event_start_time);
+                      const eventMeta = formatEventMeta(row);
                       const modelAmerican =
                         row.model_probability != null
                           ? row.model_probability >= 0.5
@@ -109,9 +109,9 @@ export default async function HistoryPage() {
                             <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
                               {formatEvent(row)}
                             </div>
-                            {eventTime && (
+                            {eventMeta && (
                               <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
-                                {eventTime}
+                                {eventMeta}
                               </div>
                             )}
                           </td>

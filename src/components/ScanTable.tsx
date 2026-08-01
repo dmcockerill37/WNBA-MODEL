@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventTime, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
+import { ScanRow, formatOdds, formatEdge, formatEvent, formatEventMeta, statLabel, bookLabel, edgeTier, EdgeTier } from "@/lib/types";
 import TierBadge from "./TierBadge";
 import Drawer from "./Drawer";
 
@@ -140,7 +140,7 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                 const isPlaced = placed.has(key);
                 const isLoading = loadingKeys.has(key);
                 const tier = edgeTier(row.edge);
-                const eventTime = formatEventTime(row.event_start_time);
+                const eventMeta = formatEventMeta(row);
                 const modelAmerican = row.model_probability
                   ? row.model_probability >= 0.5
                     ? Math.round(-100 * row.model_probability / (1 - row.model_probability))
@@ -222,9 +222,9 @@ export default function ScanTable({ rows, gameDate, placedKeys: initialPlaced }:
                       <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>
                         {formatEvent(row)}
                       </div>
-                      {eventTime && (
+                      {eventMeta && (
                         <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
-                          {eventTime}
+                          {eventMeta}
                         </div>
                       )}
                     </td>

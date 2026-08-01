@@ -126,3 +126,23 @@ export function formatEventTime(iso: string | null): string | null {
     minute: "2-digit",
   });
 }
+
+export function formatEventDate(isoDate: string | null): string | null {
+  if (!isoDate || isoDate === "all") return null;
+  const [year, month, day] = isoDate.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/** Secondary event line: "Jul 31 · 7:00 PM" */
+export function formatEventMeta(
+  row: Pick<ScanRow, "snapshot_game_date" | "event_start_time">
+): string | null {
+  const date = formatEventDate(row.snapshot_game_date);
+  const time = formatEventTime(row.event_start_time);
+  if (date && time) return `${date} · ${time}`;
+  return date ?? time;
+}
