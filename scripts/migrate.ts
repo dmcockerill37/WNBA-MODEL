@@ -23,7 +23,7 @@ const statements = schema
 
 console.log(`Running ${statements.length} SQL statements...`);
 for (const stmt of statements) {
-  await sql(stmt);
+  await sql.query(stmt);
   console.log("  ok:", stmt.slice(0, 60).replace(/\s+/g, " ") + "...");
 }
 console.log("Migration complete.");
