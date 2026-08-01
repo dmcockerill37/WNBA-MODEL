@@ -69,3 +69,30 @@ input[type="search"]::-webkit-search-cancel-button {
   .drawer-panel      { padding: 16px !important; }
   .page-container    { padding: 12px !important; }
 }
+
+@keyframes run-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes run-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.run-spinner {
+  animation: run-spin 0.7s linear infinite;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--text-muted) 0%,
+    var(--text-primary) 45%,
+    var(--text-muted) 90%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: run-shimmer 1.4s ease-in-out infinite;
+}

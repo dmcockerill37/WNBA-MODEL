@@ -4,11 +4,13 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getRunActionStatus, startRunAction } from "@/app/actions/run-model";
 import type { RunAction } from "@/lib/run-actions";
+import { Marker, MarkerContent, MarkerIcon, Spinner } from "@/components/ui/marker";
+import { Progress } from "@/components/ui/progress";
 
 type JobState =
   | { kind: "idle" }
-  | { kind: "starting"; action: RunAction }
-  | { kind: "running"; action: RunAction; runId: number | null }
+  | { kind: "starting"; action: RunAction; startedAt: number }
+  | { kind: "running"; action: RunAction; runId: number | null; startedAt: number }
   | { kind: "success"; action: RunAction }
   | { kind: "error"; action: RunAction; message: string };
 
@@ -36,11 +38,26 @@ const ACTION_LABEL: Record<RunAction, string> = {
   "pinnacle-check": "Pinnacle check",
 };
 
+/** Expected duration used for the progress animation (ms). */
+const EXPECTED_MS: Record<RunAction, number> = {
+  scan: 150_000,
+  resolve: 60_000,
+  "pinnacle-check": 90_000,
+};
+
 function dateFromPath(pathname: string): string {
   if (pathname === "/today" || pathname.startsWith("/today/")) return "today";
   if (pathname === "/tomorrow" || pathname.startsWith("/tomorrow/")) return "tomorrow";
   if (pathname === "/yesterday" || pathname.startsWith("/yesterday/")) return "yesterday";
   return "today";
+}
+
+function estimateProgress(action: RunAction, startedAt: number, kind: "starting" | "running"): number {
+  if (kind === "starting") return 8;
+  const elapsed = Date.now() - startedAt;
+  const ratio = elapsed / EXPECTED_MS[action];
+  // Ease toward 92% while GHA is still running; jump to 100 on success.
+  return Math.min(92, 12 + ratio * 80);
 }
 
 const btnBase: CSSProperties = {
@@ -62,6 +79,7 @@ export default function ActionsMenu() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [job, setJob] = useState<JobState>({ kind: "idle" });
+  const [progress, setProgress] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const busy = job.kind === "starting" || job.kind === "running";
 
@@ -83,9 +101,23 @@ export default function ActionsMenu() {
 
   useEffect(() => {
     if (job.kind !== "success" && job.kind !== "error") return;
-    const id = window.setTimeout(() => setJob({ kind: "idle" }), 8000);
+    const id = window.setTimeout(() => {
+      setJob({ kind: "idle" });
+      setProgress(0);
+    }, 8000);
     return () => window.clearTimeout(id);
   }, [job.kind]);
+
+  // Animate progress while a job is in flight.
+  useEffect(() => {
+    if (job.kind !== "starting" && job.kind !== "running") return;
+    const tick = () => {
+      setProgress(estimateProgress(job.action, job.startedAt, job.kind));
+    };
+    tick();
+    const id = window.setInterval(tick, 500);
+    return () => window.clearInterval(id);
+  }, [job]);
 
   useEffect(() => {
     if (job.kind !== "running" || job.runId == null) return;
@@ -96,6 +128,7 @@ export default function ActionsMenu() {
         if (cancelled) return;
         if (run.status === "completed") {
           if (run.conclusion === "success") {
+            setProgress(100);
             setJob({ kind: "success", action: job.action });
             router.refresh();
           } else {
@@ -126,15 +159,18 @@ export default function ActionsMenu() {
 
   async function start(action: RunAction) {
     setOpen(false);
-    setJob({ kind: "starting", action });
+    const startedAt = Date.now();
+    setProgress(8);
+    setJob({ kind: "starting", action, startedAt });
     try {
       const result = await startRunAction({
         action,
         date: action === "resolve" ? undefined : dateFromPath(pathname),
       });
-      setJob({ kind: "running", action, runId: result.run_id });
+      setJob({ kind: "running", action, runId: result.run_id, startedAt });
       if (result.run_id == null) {
         window.setTimeout(() => {
+          setProgress(100);
           setJob({ kind: "success", action });
           router.refresh();
         }, 90_000);
@@ -148,16 +184,7 @@ export default function ActionsMenu() {
     }
   }
 
-  const statusText =
-    job.kind === "starting"
-      ? `Starting ${ACTION_LABEL[job.action]}…`
-      : job.kind === "running"
-        ? `${ACTION_LABEL[job.action]} running…`
-        : job.kind === "success"
-          ? `${ACTION_LABEL[job.action]} finished`
-          : job.kind === "error"
-            ? job.message
-            : null;
+  const showStatus = job.kind !== "idle";
 
   return (
     <div ref={rootRef} style={{ marginLeft: "auto", position: "relative" }}>
@@ -230,25 +257,62 @@ export default function ActionsMenu() {
         </div>
       )}
 
-      {statusText && (
+      {showStatus && !open && (
         <div
           style={{
             position: "absolute",
             right: 0,
-            top: "calc(100% + 6px)",
-            whiteSpace: "nowrap",
-            fontSize: "11px",
-            color:
-              job.kind === "error"
-                ? "var(--lost)"
-                : job.kind === "success"
-                  ? "var(--won)"
-                  : "var(--text-muted)",
-            pointerEvents: "none",
-            display: open ? "none" : "block",
+            top: "calc(100% + 8px)",
+            width: "260px",
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            padding: "10px 12px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            zIndex: 55,
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
           }}
         >
-          {statusText}
+          {busy && (
+            <>
+              <Marker role="status">
+                <MarkerIcon>
+                  <Spinner />
+                </MarkerIcon>
+                <MarkerContent className="shimmer">
+                  {job.kind === "starting"
+                    ? `Starting ${ACTION_LABEL[job.action]}…`
+                    : `Running ${ACTION_LABEL[job.action]}…`}
+                </MarkerContent>
+              </Marker>
+              <Progress value={progress} />
+            </>
+          )}
+
+          {job.kind === "success" && (
+            <>
+              <Marker role="status">
+                <MarkerIcon style={{ color: "var(--won)", borderColor: "rgba(52,211,153,0.35)" }}>
+                  ✓
+                </MarkerIcon>
+                <MarkerContent style={{ color: "var(--won)" }}>
+                  {ACTION_LABEL[job.action]} finished
+                </MarkerContent>
+              </Marker>
+              <Progress value={100} />
+            </>
+          )}
+
+          {job.kind === "error" && (
+            <Marker role="status">
+              <MarkerIcon style={{ color: "var(--lost)", borderColor: "rgba(248,113,113,0.35)" }}>
+                !
+              </MarkerIcon>
+              <MarkerContent style={{ color: "var(--lost)" }}>{job.message}</MarkerContent>
+            </Marker>
+          )}
         </div>
       )}
     </div>
