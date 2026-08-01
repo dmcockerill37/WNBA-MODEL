@@ -61,11 +61,21 @@ export async function getScanRows(gameDate: string, league = "wnba"): Promise<Sc
         ) bj ON true
         WHERE ss.league = ${league}
           AND (
+            -- Prefer the dated slate. Only fall back to undated ("all") rows
+            -- when no dated snapshot exists yet for this game date (avoids
+            -- morning orphan books like Astier FD @ 32% polluting Clean).
             ss.snapshot_game_date = ${gameDate}
             OR (
-              ss.event_start_time IS NOT NULL
+              ss.snapshot_game_date = 'all'
+              AND ss.event_start_time IS NOT NULL
               AND (ss.event_start_time::timestamptz AT TIME ZONE 'America/New_York')::date::text
                 = ${gameDate}
+              AND NOT EXISTS (
+                SELECT 1
+                FROM scan_snapshots dated
+                WHERE dated.league = ss.league
+                  AND dated.snapshot_game_date = ${gameDate}
+              )
             )
           )
         ORDER BY
