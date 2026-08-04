@@ -1,3 +1,9 @@
+> **Migrated (2026-08):** This dashboard lives in **[DMC-EV-PLATFORM](https://github.com/dmcockerill37/DMC-EV-PLATFORM)** as the DMC-only **Model** tab (`/model`, `/model/history`, `/model/tracker`). Production UI: [dmc-ev-platform.vercel.app](https://dmc-ev-platform.vercel.app). Do not run new scans against this app — Neon writes go to the DMC dashboard database via GitHub Actions in that monorepo.
+>
+> This repo is kept for history. Prefer opening issues / PRs on DMC-EV-PLATFORM.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
